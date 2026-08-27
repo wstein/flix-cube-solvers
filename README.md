@@ -37,7 +37,7 @@ length, and so far the same moves; four are pinned as fixtures in
 ## Quick start
 
 ```sh
-./flixw test         # 47 tests, no toolchain to install
+./flixw test         # 51 tests, no toolchain to install
 ./flixw run          # the demo entry point
 ./flixw check        # type-check; the fast loop
 ./flixw format       # reformat in place before committing
@@ -57,6 +57,7 @@ repository; see [`wstein/flixw`](https://github.com/wstein/flixw).
 │   ├── Pocket.flix               the 2x2x2 cubie model and its move tables
 │   ├── Stickers.flix             the facelet boundary, both directions
 │   ├── Search.flix               the Datalog distance table and the search over it
+│   ├── Coord.flix                states packed into one Int64, and what that buys
 │   ├── Engine.flix               a prepared solver, and the Solver instance
 │   └── Main.flix                 a demo entry point, not part of the library
 └── test/
@@ -65,6 +66,7 @@ repository; see [`wstein/flixw`](https://github.com/wstein/flixw).
     ├── TestPocket.flix           move mechanics: orders, inverses, what is not a move
     ├── TestStickers.flix         the round trip, and the states that are not cubes
     ├── TestSearch.flix           table sizes against the published figures, and optimality
+    ├── TestCoord.flix            the packing is injective and agrees with the cubie table
     ├── TestEngine.flix           the contract as a caller meets it
     └── TestCrossCheck.flix       cubes solved to the same length by another engine
 ```
@@ -205,6 +207,28 @@ laptop, wall clock minus the ~3.1s compile:
 The engine parallelises semi-naive evaluation; the hand-written loops do not.
 The breadth-first version survives as `tableMut`, where it earns its keep as
 the fixpoint's oracle: `TestSearch` asserts the two agree state for state.
+
+### Where it stops
+
+That result invites the obvious next question — if the fixpoint is the fastest
+thing here, why stop at six moves? So we packed a state into one `Int64`
+(`Cube.Pocket.Coord`, seven positions and seven twists, three and two bits
+each) and asked for the complete table: every one of the 3,674,160 states a
+pocket cube has.
+
+| | Result |
+| --- | --- |
+| States | 3,674,160 — the exact known count, which is its own correctness check |
+| Wall clock | 307s |
+| Peak memory | 3.1GB |
+
+Packing bought about 1.4× at depth 6, not the order of magnitude that would
+have made this viable. So the honest boundary is: **the fixpoint is the best
+way to build a table that fits, and is not a way to build one that does not.**
+A 3x3 needs pruning tables of a few million entries each, and on these numbers
+they want packed arrays, not a `Map` and a fixpoint. `Cube.Pocket.Coord` stays
+because the encoding is worth having — a table that is ever written to disk
+will need it — and because the measurement should be repeatable.
 
 ## Depending on it
 
