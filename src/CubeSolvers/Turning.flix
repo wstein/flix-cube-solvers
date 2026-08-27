@@ -49,6 +49,42 @@ mod CubeSolvers.Turning {
             List.range(0, perFace) |> List.forAll(i -> Vector.get(f * perFace + i, stickers) == first))
 
     ///
+    /// Where each sticker goes when `m` is made, as slot indices.
+    ///
+    /// The move as data. A coordinate over some of the stickers -- the
+    /// centres of a 4x4, say -- needs to know how a turn moves those slots
+    /// and nothing else, and re-deriving that from the geometry every time is
+    /// what makes table building slow.
+    ///
+    pub def permutation(kind: Kind, m: Move): Result[Invalid, Vector[Int32]] =
+        match CubeSolvers.validate(kind, m) {
+            case Err(why) => Err(Invalid.Unsolvable(why))
+            case Ok(_)    =>
+                let n = CubeSolvers.order(kind);
+                let once = quarterPermutation(kind, CubeSolvers.face(m), CubeSolvers.depth(m));
+                Ok(Vector.range(0, CubeSolvers.quarterTurns(CubeSolvers.turn(m)))
+                    |> Vector.foldLeft(acc -> _ -> Vector.map(i -> Vector.get(i, once), acc),
+                        Vector.range(0, 6 * n * n)))
+        }
+
+    ///
+    /// Where each sticker goes in one quarter turn of `depth` layers of
+    /// `face`.
+    ///
+    def quarterPermutation(kind: Kind, face: Face, depth: Int32): Vector[Int32] =
+        let n = CubeSolvers.order(kind);
+        let m = n - 1;
+        let axis = outward(face);
+        let threshold = m - 2 * (depth - 1);
+        Vector.range(0, 6 * n * n) |> Vector.map(i ->
+            let (side, at) = place(n, i);
+            let here = position(n, side, at);
+            if (dot(here, axis) >= threshold)
+                index(n, spinFace(face, side), spin(face, here))
+            else
+                i)
+
+    ///
     /// One quarter turn of `depth` layers of `face`.
     ///
     def quarter(kind: Kind, stickers: Vector[Face], face: Face, depth: Int32): Vector[Face] =
