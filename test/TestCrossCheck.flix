@@ -35,6 +35,28 @@ mod TestCrossCheck {
         let stickers = text |> String.toList |> List.filterMap(Cube.faceOfToken) |> List.toVector;
         facelets(Kind.Cube2x2, stickers) |> Result.toOption
 
+    ///
+    /// The same for the 3x3, where the other engine is min2phase and the
+    /// bar is different: this package's two-phase search is not optimal, so
+    /// what is asserted is that it does not do *worse* than the engine it is
+    /// checked against. On this cube both return the same eleven moves.
+    ///
+    @Test
+    def theRubikCubeIsSolvedNoWorseThanTheOtherEngine(): Unit \ Assert =
+        let text = "UUUUUUUUUBLFRRRRRRFFRFFFFFFDDDDDDDDDLRLLLLLLLRBBBBBBBB";
+        let stickers = text |> String.toList |> List.filterMap(Cube.faceOfToken) |> List.toVector;
+        match Cube.Solver.facelets(Kind.Cube3x3, stickers) {
+            case Err(why)   => Assert.assertEq(expected = "a countable cube", "${why}")
+            case Ok(cube)   => match Cube.Solver.search(Cube.Rubik.Engine.prepared(), cube, defaultOptions()) {
+                case Cube.Solver.Outcome.Solved(ms) =>
+                    Assert.assertEq(expected = true, List.length(ms) <= 11);
+                    Assert.assertEq(
+                        expected = Ok(Some(Cube.Rubik.solved())),
+                        Result.map(state -> Cube.Rubik.replay(state, ms), Cube.Rubik.Stickers.ofFacelets(cube)))
+                case other => Assert.assertEq(expected = "Solved", "${other}")
+            }
+        }
+
     @Test
     def everyCrossCheckedCubeSolvesInTheLengthTheOtherEngineFound(): Unit \ Assert =
         let engine = prepared(5);

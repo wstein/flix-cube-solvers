@@ -85,6 +85,40 @@ mod TestCube {
         Assert.assertEq(expected = true, Result.isErr(Cube.parse("R nonsense U")))
 
     @Test
+    def simplifyMergesConsecutiveTurnsOfOneLayer(): Unit \ Assert =
+        Assert.assertEq(expected = "F'", render(Cube.simplify(parseAll("F F2"))));
+        Assert.assertEq(expected = "", render(Cube.simplify(parseAll("U U'"))));
+        Assert.assertEq(expected = "", render(Cube.simplify(parseAll("R2 R2"))));
+        Assert.assertEq(expected = "U R", render(Cube.simplify(parseAll("U R"))))
+
+    ///
+    /// Removing a pair can bring two more together, so one pass is not enough.
+    ///
+    @Test
+    def simplifyWorksToAFixedPoint(): Unit \ Assert =
+        Assert.assertEq(expected = "U2", render(Cube.simplify(parseAll("U R R' U"))));
+        Assert.assertEq(expected = "", render(Cube.simplify(parseAll("U R R' U'"))))
+
+    ///
+    /// A wide turn is a different layer from the outer one, so they do not
+    /// merge.
+    ///
+    @Test
+    def simplifyKeepsDifferentDepthsApart(): Unit \ Assert =
+        Assert.assertEq(expected = "U Uw", render(Cube.simplify(parseAll("U Uw"))))
+
+    ///
+    /// The sequence `text` names, or nothing.
+    ///
+    def parseAll(text: String): Cube.MoveSequence =
+        Cube.parse(text) |> Result.getWithDefault(Nil)
+
+    ///
+    /// The notation for a sequence.
+    ///
+    def render(ms: Cube.MoveSequence): String = Cube.render(ms)
+
+    @Test
     def faceletCountFollowsTheOrder(): Unit \ Assert =
         Assert.assertEq(expected = 24, Cube.faceletCount(Kind.Cube2x2));
         Assert.assertEq(expected = 54, Cube.faceletCount(Kind.Cube3x3));

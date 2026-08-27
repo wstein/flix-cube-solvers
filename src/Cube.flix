@@ -299,6 +299,31 @@ mod Cube {
             |> Result.traverse(parseMove)
 
     ///
+    /// The sequence with consecutive turns of one layer combined.
+    ///
+    /// `F F2` is `F'`, `U U'` is nothing, and removing a pair can bring two
+    /// more together -- `U R R' U` is `U2` -- so this works to a fixed point
+    /// rather than in one pass. A two-phase search needs it: the two halves
+    /// are found separately and meet without knowing they turned the same
+    /// face last and first.
+    ///
+    pub def simplify(ms: MoveSequence): MoveSequence =
+        ms |> List.foldLeft(combine, Nil) |> List.reverse
+
+    ///
+    /// Adds a move to a reversed sequence, merging it into the last one if
+    /// they turn the same layer.
+    ///
+    def combine(done: MoveSequence, m: Move): MoveSequence = match done {
+        case previous :: rest if face(previous) == face(m) and depth(previous) == depth(m) =>
+            match turnOfQuarterTurns(quarterTurns(turn(previous)) + quarterTurns(turn(m))) {
+                case None    => rest
+                case Some(t) => move(face(m), depth(m), t) :: rest
+            }
+        case _ => m :: done
+    }
+
+    ///
     /// The given sequence in standard notation, one space between moves.
     ///
     pub def render(ms: MoveSequence): String =
