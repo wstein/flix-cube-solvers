@@ -7,28 +7,28 @@
 /// Solutions are short but not shortest. A two-phase search finds the best
 /// answer of the form "reduce, then finish", and the shortest solution to a
 /// cube need not have that shape: this is the trade that makes solving a 3x3
-/// quick, and it is why `Cube.Pocket` promises optimality and this does not.
+/// quick, and it is why `CubeSolvers.Pocket` promises optimality and this does not.
 ///
-mod Cube.Rubik.Engine {
+mod CubeSolvers.Rubik.Engine {
 
-    use Cube.{Kind, Move}
-    use Cube.Rubik.{State, replay}
-    use Cube.Rubik.Phase1
-    use Cube.Rubik.Phase2
-    use Cube.Rubik.Stickers.ofFacelets
-    use Cube.Solver.{Facelets, Options, Outcome}
+    use CubeSolvers.{Kind, Move}
+    use CubeSolvers.Rubik.{State, replay}
+    use CubeSolvers.Rubik.Reduce
+    use CubeSolvers.Rubik.Finish
+    use CubeSolvers.Rubik.Stickers.ofFacelets
+    use CubeSolvers.Solver.{Facelets, Options, Outcome}
 
     ///
     /// A solver holding the tables of both phases.
     ///
     pub enum Engine {
-        case Engine(Phase1.Tables, Phase2.Tables)
+        case Engine(Reduce.Tables, Finish.Tables)
     }
 
     ///
     /// Builds both phases' tables. Seconds, once.
     ///
-    pub def prepared(): Engine = Engine.Engine(Phase1.tables(), Phase2.tables())
+    pub def prepared(): Engine = Engine.Engine(Reduce.tables(), Finish.tables())
 
     ///
     /// The longest a two-phase solution is allowed to get by default.
@@ -55,14 +55,14 @@ mod Cube.Rubik.Engine {
     ///
     pub def solution(e: Engine, s: State, maxMoves: Int32): Option[List[Move]] =
         let Engine.Engine(t1, t2) = e;
-        attempt(t1, t2, s, Phase1.estimate(t1, s), maxMoves, None)
+        attempt(t1, t2, s, Reduce.estimate(t1, s), maxMoves, None)
 
     ///
     /// Tries a first phase of exactly `d1` moves, then the next length.
     ///
     def attempt(
-        t1: Phase1.Tables,
-        t2: Phase2.Tables,
+        t1: Reduce.Tables,
+        t2: Finish.Tables,
         s: State,
         d1: Int32,
         maxMoves: Int32,
@@ -78,21 +78,21 @@ mod Cube.Rubik.Engine {
     /// The better of `best` and whatever a first phase of `d1` moves leads to.
     ///
     def improve(
-        t1: Phase1.Tables,
-        t2: Phase2.Tables,
+        t1: Reduce.Tables,
+        t2: Finish.Tables,
         s: State,
         d1: Int32,
         bestLength: Int32,
         best: Option[List[Move]]
     ): Option[List[Move]] =
-        match Phase1.exactly(t1, s, d1) {
+        match Reduce.exactly(t1, s, d1) {
             case None      => best
             case Some(one) => match replay(s, one) {
                 case None     => best
-                case Some(g1) => match Phase2.finish(t2, g1, bestLength - d1 - 1) {
+                case Some(g1) => match Finish.finish(t2, g1, bestLength - d1 - 1) {
                     case None      => best
                     case Some(two) =>
-                        let whole = Cube.simplify(one ::: two);
+                        let whole = CubeSolvers.simplify(one ::: two);
                         if (List.length(whole) < bestLength) Some(whole) else best
                 }
             }
@@ -102,7 +102,7 @@ mod Cube.Rubik.Engine {
     /// The 3x3 engine reads no clock and touches nothing that outlives the
     /// call, so it declares no effect and may be used from a pure function.
     ///
-    instance Cube.Solver.Solver[Engine] {
+    instance CubeSolvers.Solver.Solver[Engine] {
 
         type Aef = {}
 

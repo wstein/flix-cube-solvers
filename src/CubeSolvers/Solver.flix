@@ -7,9 +7,9 @@
 /// next year -- is not this module's business, which is why the contract is a
 /// trait rather than a function.
 ///
-mod Cube.Solver {
+mod CubeSolvers.Solver {
 
-    use Cube.{Kind, Face, MoveSequence}
+    use CubeSolvers.{Kind, Face, MoveSequence}
 
     ///
     /// Anything that can solve a cube.
@@ -63,7 +63,7 @@ mod Cube.Solver {
     instance ToString[Facelets] {
         pub def toString(f: Facelets): String =
             let Facelets.Checked(k, stickers) = f;
-            let s = stickers |> Vector.map(Cube.faceToken) |> Vector.toList |> List.map(Char.toString) |> List.join("");
+            let s = stickers |> Vector.map(CubeSolvers.faceToken) |> Vector.toList |> List.map(Char.toString) |> List.join("");
             "${k}: ${s}"
     }
 
@@ -115,12 +115,12 @@ mod Cube.Solver {
     /// must. Reachability is left to the engine.
     ///
     pub def facelets(k: Kind, stickers: Vector[Face]): Result[Invalid, Facelets] =
-        let expected = Cube.faceletCount(k);
+        let expected = CubeSolvers.faceletCount(k);
         let actual = Vector.length(stickers);
         if (actual != expected)
             Err(Invalid.WrongLength(expected, actual))
         else
-            let n = Cube.order(k);
+            let n = CubeSolvers.order(k);
             let perFace = n * n;
             let wrong = List.findMap(f ->
                 let seen = Vector.count(s -> s == f, stickers);
@@ -144,7 +144,7 @@ mod Cube.Solver {
     /// The solved state of the given kind.
     ///
     pub def solved(k: Kind): Facelets =
-        let perFace = Cube.order(k) * Cube.order(k);
+        let perFace = CubeSolvers.order(k) * CubeSolvers.order(k);
         let stickers = faces() |> List.flatMap(f -> List.repeat(perFace, f)) |> List.toVector;
         Facelets.Checked(k, stickers)
 

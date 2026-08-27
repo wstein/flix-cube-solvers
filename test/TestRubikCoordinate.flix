@@ -1,7 +1,7 @@
-mod TestRubikCoord {
+mod TestRubikCoordinate {
 
-    use Cube.Rubik.{State, solved, replay, applyMove, moves}
-    use Cube.Rubik.Coord.{twist, flip, slice, withTwist, withFlip, withSlice,
+    use CubeSolvers.Rubik.{State, solved, replay, applyMove, moves}
+    use CubeSolvers.Rubik.Coordinate.{twist, flip, slice, withTwist, withFlip, withSlice,
         twistCount, flipCount, sliceCount, twistTable, flipTable, sliceTable}
 
     ///
@@ -15,7 +15,7 @@ mod TestRubikCoord {
             "F R D2 R2 B L R B2 F' B F U2" ::
             "R U R' U' R' F R2 U' R' U' R U R' F'" :: Nil;
         solved() :: (scrambles |> List.filterMap(text ->
-            Cube.parse(text) |> Result.toOption |> Option.flatMap(ms -> replay(solved(), ms))))
+            CubeSolvers.parse(text) |> Result.toOption |> Option.flatMap(ms -> replay(solved(), ms))))
 
     @Test
     def everyTwistSurvivesTheRoundTrip(): Unit \ Assert =

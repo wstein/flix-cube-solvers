@@ -1,13 +1,13 @@
 mod TestPocket {
 
-    use Cube.{Face, Turn, move}
-    use Cube.Pocket.{State, solved, applyMove, replay, moves, neighbours, permutation, twist}
+    use CubeSolvers.{Face, Turn, move}
+    use CubeSolvers.Pocket.{State, solved, applyMove, replay, moves, neighbours, permutation, twist}
 
     ///
     /// A sequence read as moves, for tests that care about the state and not
     /// the notation.
     ///
-    def after(ms: List[Cube.Move]): Option[State] = replay(solved(), ms)
+    def after(ms: List[CubeSolvers.Move]): Option[State] = replay(solved(), ms)
 
     @Test
     def solvedIsIdentity(): Unit \ Assert =
@@ -37,7 +37,7 @@ mod TestPocket {
 
     @Test
     def fourQuarterTurnsOfAFaceAreTheIdentity(): Unit \ Assert =
-        foreach (f <- Vector.toList(Cube.Pocket.faces())) {
+        foreach (f <- Vector.toList(CubeSolvers.Pocket.faces())) {
             let quarter = move(f, 1, Turn.Cw);
             Assert.assertEq(expected = Some(solved()), after(List.repeat(4, quarter)))
         }
@@ -57,7 +57,7 @@ mod TestPocket {
     @Test
     def aSequenceIsUndoneByItsInverse(): Unit \ Assert =
         let scramble = move(Face.R, 1, Turn.Cw) :: move(Face.U, 1, Turn.Half) :: move(Face.F, 1, Turn.Ccw) :: Nil;
-        Assert.assertEq(expected = Some(solved()), after(scramble ::: Cube.inverse(scramble)))
+        Assert.assertEq(expected = Some(solved()), after(scramble ::: CubeSolvers.inverse(scramble)))
 
     @Test
     def aScrambledCubeIsNotSolved(): Unit \ Assert =

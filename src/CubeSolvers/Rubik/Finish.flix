@@ -8,14 +8,14 @@
 /// middle. Ten moves are available: any turn of U or D, and half turns of the
 /// other four.
 ///
-mod Cube.Rubik.Phase2 {
+mod CubeSolvers.Rubik.Finish {
 
-    use Cube.Move
-    use Cube.Rubik.{State, moves}
-    use Cube.Rubik.Prune.pairTable
+    use CubeSolvers.Move
+    use CubeSolvers.Rubik.{State, moves}
+    use CubeSolvers.Rubik.Pruning.pairTable
 
     ///
-    /// The moves this phase may use, as indices into `Cube.Rubik.moves`.
+    /// The moves this phase may use, as indices into `CubeSolvers.Rubik.moves`.
     ///
     /// Any turn of U and D, and only half turns of R, L, F and B: a quarter
     /// turn of a side face would twist corners or flip edges and undo what the
@@ -41,7 +41,7 @@ mod Cube.Rubik.Phase2 {
     ///
     /// The order of the corners, as one number.
     ///
-    pub def cornerPerm(s: State): Int32 = rank(Cube.Rubik.corners(s))
+    pub def cornerPerm(s: State): Int32 = rank(CubeSolvers.Rubik.corners(s))
 
     ///
     /// A state whose corners are in the order the number names.
@@ -52,7 +52,7 @@ mod Cube.Rubik.Phase2 {
     ///
     /// The order of the U and D edges, as one number.
     ///
-    pub def edgePerm(s: State): Int32 = rank(Vector.slice(start = 0, end = 8, Cube.Rubik.edges(s)))
+    pub def edgePerm(s: State): Int32 = rank(Vector.slice(start = 0, end = 8, CubeSolvers.Rubik.edges(s)))
 
     ///
     /// A state whose U and D edges are in the order the number names.
@@ -68,7 +68,7 @@ mod Cube.Rubik.Phase2 {
     /// The order of the four middle edges, as one number.
     ///
     pub def slicePerm(s: State): Int32 =
-        rank(Vector.slice(start = 8, end = 12, Cube.Rubik.edges(s)) |> Vector.map(e -> e - 8))
+        rank(Vector.slice(start = 8, end = 12, CubeSolvers.Rubik.edges(s)) |> Vector.map(e -> e - 8))
 
     ///
     /// A state whose middle edges are in the order the number names.
@@ -112,7 +112,7 @@ mod Cube.Rubik.Phase2 {
     def moveTable(count: Int32, decode: Int32 -> State, encode: State -> Int32): Vector[Vector[Int32]] =
         Vector.range(0, count) |> Vector.map(c ->
             let s = decode(c);
-            moveIndices() |> Vector.map(i -> match Cube.Rubik.applyMove(s, Vector.get(i, moves())) {
+            moveIndices() |> Vector.map(i -> match CubeSolvers.Rubik.applyMove(s, Vector.get(i, moves())) {
                 case Some(t) => encode(t)
                 case None    => c
             }))

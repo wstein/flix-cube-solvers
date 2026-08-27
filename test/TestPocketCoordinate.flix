@@ -1,12 +1,12 @@
-mod TestCoord {
+mod TestPocketCoordinate {
 
-    use Cube.Pocket.{State, solved}
-    use Cube.Pocket.Coord.{encode, decode}
+    use CubeSolvers.Pocket.{State, solved}
+    use CubeSolvers.Pocket.Coordinate.{encode, decode}
 
     ///
     /// Every state within `d` moves of solved.
     ///
-    def statesWithin(d: Int32): List[State] = Set.toList(Map.keysOf(Cube.Pocket.Search.table(d)))
+    def statesWithin(d: Int32): List[State] = Set.toList(Map.keysOf(CubeSolvers.Pocket.Search.table(d)))
 
     @Test
     def solvedEncodesToTheCubiclesInOrder(): Unit \ Assert =
@@ -34,7 +34,7 @@ mod TestCoord {
     def theCoordinateTableAgreesWithTheCubieTable(): Unit \ Assert =
         foreach (d <- List.range(0, 4))
             Assert.assertEq(
-                expected = Cube.Pocket.Search.table(d) |> Map.toList |> List.map(match (s, n) -> (encode(s), n)) |> List.toMap,
-                Cube.Pocket.Coord.table(d))
+                expected = CubeSolvers.Pocket.Search.table(d) |> Map.toList |> List.map(match (s, n) -> (encode(s), n)) |> List.toMap,
+                CubeSolvers.Pocket.Coordinate.table(d))
 
 }

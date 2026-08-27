@@ -6,7 +6,7 @@
 /// solver in this package speaks, and it is deliberately pure -- parsing and
 /// rendering a move sequence must not need a compiler, a table or a clock.
 ///
-mod Cube {
+mod CubeSolvers {
 
     ///
     /// The cube sizes this package models.

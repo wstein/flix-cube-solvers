@@ -7,9 +7,9 @@
 /// over 2^35. That costs nothing here, because what is stored is the states
 /// that exist, not the space they are drawn from.
 ///
-mod Cube.Pocket.Coord {
+mod CubeSolvers.Pocket.Coordinate {
 
-    use Cube.Pocket.State
+    use CubeSolvers.Pocket.State
 
     ///
     /// The cubicles that move.
@@ -20,8 +20,8 @@ mod Cube.Pocket.Coord {
     /// The state as one integer.
     ///
     pub def encode(s: State): Int64 =
-        let perm = Cube.Pocket.permutation(s);
-        let twist = Cube.Pocket.twist(s);
+        let perm = CubeSolvers.Pocket.permutation(s);
+        let twist = CubeSolvers.Pocket.twist(s);
         mobile() |> Vector.foldLeft(acc -> i ->
             let p = Int32.toInt64(Vector.get(i, perm));
             let t = Int32.toInt64(Vector.get(i, twist));
@@ -52,7 +52,7 @@ mod Cube.Pocket.Coord {
     /// Every state one move away, as integers.
     ///
     pub def neighbours(code: Int64): Vector[Int64] =
-        Cube.Pocket.neighbours(decode(code)) |> Vector.map(encode)
+        CubeSolvers.Pocket.neighbours(decode(code)) |> Vector.map(encode)
 
     ///
     /// Shortest distances from solved to every state within `depth` moves,
@@ -68,7 +68,7 @@ mod Cube.Pocket.Coord {
     ///
     pub def table(depth: Int32): Map[Int64, Int32] =
         let facts = #{
-            Dist(encode(Cube.Pocket.solved()); Down.Down(0)).
+            Dist(encode(CubeSolvers.Pocket.solved()); Down.Down(0)).
             Dist(next; deeper(d)) :- Dist(s; d), if (distance(d) < depth), let next = neighbours(s).
         };
         query facts select (s, d) from Dist(s; d)

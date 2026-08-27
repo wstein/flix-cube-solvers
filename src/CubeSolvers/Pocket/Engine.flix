@@ -7,18 +7,18 @@
 /// cost once, or to pay it at startup, or never, can see exactly where the
 /// cost is.
 ///
-mod Cube.Pocket.Engine {
+mod CubeSolvers.Pocket.Engine {
 
-    use Cube.Kind
-    use Cube.Pocket.Search.{table, solution}
-    use Cube.Pocket.Stickers.ofFacelets
-    use Cube.Solver.{Facelets, Options, Outcome}
+    use CubeSolvers.Kind
+    use CubeSolvers.Pocket.Search.{table, solution}
+    use CubeSolvers.Pocket.Stickers.ofFacelets
+    use CubeSolvers.Solver.{Facelets, Options, Outcome}
 
     ///
     /// A solver holding a distance table and the depth it was built to.
     ///
     pub enum Engine {
-        case Engine(Map[Cube.Pocket.State, Int32], Int32)
+        case Engine(Map[CubeSolvers.Pocket.State, Int32], Int32)
     }
 
     ///
@@ -49,7 +49,7 @@ mod Cube.Pocket.Engine {
     /// mutable state outliving the call. `Aef = {}` says so, and a caller in a
     /// pure function may use it.
     ///
-    instance Cube.Solver.Solver[Engine] {
+    instance CubeSolvers.Solver.Solver[Engine] {
 
         type Aef = {}
 

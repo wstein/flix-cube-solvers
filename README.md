@@ -20,19 +20,19 @@ Early, but the whole path works: stickers in, cubies, table, search, moves out.
 
 | Module | What it is | State |
 | --- | --- | --- |
-| `Cube` | Faces, turns, moves, notation, inversion | Done |
-| `Cube.Solver` | `Facelets`, `Invalid`, `Options`, `Outcome`, and the `Solver` trait | Done |
-| `Cube.Pocket` | The 2x2x2 as cubies: permutation, twist, the three faces that turn | Done |
-| `Cube.Pocket.Stickers` | Cubies to facelets and back | Done |
-| `Cube.Pocket.Search` | Datalog distance table, and shortest solutions from it | Done |
-| `Cube.Pocket.Engine` | A prepared solver; the first `Solver` instance | Done |
-| `Cube.Rubik` | The 3x3x3 as cubies: corners, edges, twists, flips, all six faces | Done |
-| `Cube.Rubik.Stickers` | 54 stickers to cubies and back, with the three laws | Done |
-| `Cube.Rubik.Coord` | Twist, flip and slice as numbers, and the tables moves walk them through | Done |
-| `Cube.Rubik.Prune` | Exact distances in two coordinates at a time | Done |
-| `Cube.Rubik.Phase1` | The search into the subgroup no side quarter turn is needed from | Done |
-| `Cube.Rubik.Phase2` | The finish, using only U, D and half turns | Done |
-| `Cube.Rubik.Engine` | A prepared 3x3 solver; the second `Solver` instance | Done |
+| `CubeSolvers` | Faces, turns, moves, notation, inversion | Done |
+| `CubeSolvers.Solver` | `Facelets`, `Invalid`, `Options`, `Outcome`, and the `Solver` trait | Done |
+| `CubeSolvers.Pocket` | The 2x2x2 as cubies: permutation, twist, the three faces that turn | Done |
+| `CubeSolvers.Pocket.Stickers` | Cubies to facelets and back | Done |
+| `CubeSolvers.Pocket.Search` | Datalog distance table, and shortest solutions from it | Done |
+| `CubeSolvers.Pocket.Engine` | A prepared solver; the first `Solver` instance | Done |
+| `CubeSolvers.Rubik` | The 3x3x3 as cubies: corners, edges, twists, flips, all six faces | Done |
+| `CubeSolvers.Rubik.Stickers` | 54 stickers to cubies and back, with the three laws | Done |
+| `CubeSolvers.Rubik.Coordinate` | Twist, flip and slice as numbers, and the tables moves walk them through | Done |
+| `CubeSolvers.Rubik.Pruning` | Exact distances in two coordinates at a time | Done |
+| `CubeSolvers.Rubik.Reduce` | The search into the subgroup no side quarter turn is needed from | Done |
+| `CubeSolvers.Rubik.Finish` | The finish, using only U, D and half turns | Done |
+| `CubeSolvers.Rubik.Engine` | A prepared 3x3 solver; the second `Solver` instance | Done |
 | — | 4x4 and larger | Not started |
 
 Checked against the Java implementation in
@@ -66,42 +66,53 @@ repository; see [`wstein/flixw`](https://github.com/wstein/flixw).
 ```
 .
 ├── src/
-│   ├── Cube.flix                 the model: Kind, Face, Turn, Move, notation both ways
-│   ├── Solver.flix               the contract: Facelets, Invalid, Options, Outcome, Solver
-│   ├── Pocket.flix               the 2x2x2 cubie model and its move tables
-│   ├── Rubik.flix                the 3x3x3 cubie model and its move tables
-│   ├── RubikStickers.flix        the 3x3 facelet boundary and the three laws
-│   ├── RubikCoord.flix           the 3x3 as three numbers, and their move tables
-│   ├── RubikPrune.flix           exact distances in two coordinates at a time
-│   ├── RubikPhase1.flix          the search into the subgroup
-│   ├── RubikPhase2.flix          the finish inside it
-│   ├── RubikEngine.flix          both phases, and the Solver instance
-│   ├── Stickers.flix             the facelet boundary, both directions
-│   ├── Search.flix               the Datalog distance table and the search over it
-│   ├── Coord.flix                states packed into one Int64, and what that buys
-│   ├── Engine.flix               a prepared solver, and the Solver instance
-│   └── Main.flix                 a demo entry point, not part of the library
+│   ├── CubeSolvers.flix              the model: Kind, Face, Turn, Move, notation both ways
+│   ├── CubeSolvers/
+│   │   ├── Solver.flix               the contract: Facelets, Invalid, Options, Outcome, Solver
+│   │   ├── Pocket.flix               the 2x2x2 cubie model and its move tables
+│   │   ├── Pocket/
+│   │   │   ├── Stickers.flix         the facelet boundary, both directions
+│   │   │   ├── Search.flix           the Datalog distance table and the search over it
+│   │   │   ├── Coordinate.flix       states packed into one Int64, and what that buys
+│   │   │   └── Engine.flix           a prepared solver, and the Solver instance
+│   │   ├── Rubik.flix                the 3x3x3 cubie model and its move tables
+│   │   └── Rubik/
+│   │       ├── Stickers.flix         the 3x3 facelet boundary and the three laws
+│   │       ├── Coordinate.flix       twist, flip and slice, and their move tables
+│   │       ├── Pruning.flix          exact distances in two coordinates at a time
+│   │       ├── Reduce.flix           the search into the subgroup
+│   │       ├── Finish.flix           the finish inside it
+│   │       └── Engine.flix           both phases, and the Solver instance
+│   └── Main.flix                     a demo entry point, not part of the library
 └── test/
-    ├── TestCube.flix             notation, inversion, depth rules
-    ├── TestSolver.flix           what the validator can and cannot see
-    ├── TestPocket.flix           move mechanics: orders, inverses, what is not a move
-    ├── TestStickers.flix         the round trip, and the states that are not cubes
-    ├── TestSearch.flix           table sizes against the published figures, and optimality
-    ├── TestCoord.flix            the packing is injective and agrees with the cubie table
-    ├── TestEngine.flix           the contract as a caller meets it
-    └── TestCrossCheck.flix       cubes solved to the same length by another engine
+    ├── TestCube.flix                 notation, inversion, depth rules
+    ├── TestSolver.flix               what the validator can and cannot see
+    ├── TestPocket.flix               move mechanics: orders, inverses, what is not a move
+    ├── TestPocketStickers.flix       the round trip, and the states that are not cubes
+    ├── TestPocketSearch.flix         table sizes against the published figures, and optimality
+    ├── TestPocketCoordinate.flix     the packing is injective and agrees with the cubie table
+    ├── TestPocketEngine.flix         the contract as a caller meets it
+    ├── TestRubikCoordinate.flix      the tables agree with the cube, move for move
+    ├── TestRubikEngine.flix          the 3x3 end to end
+    ├── TestCrossCheck.flix           cubes solved no worse than another engine
+    ├── TestVectors.flix              scrambles replayed against the Java oracle's own vectors
+    └── fixtures/                     replay-vectors.tsv, shared with wstein/cube-solvers
 ```
+
+Directories mirror module paths, which is what the rest of the Flix ecosystem
+does — `flix-json` has `src/Json/FromJson.flix` for `Json.FromJson` — and it is
+why no file needs a prefix to stay unique.
 
 Solving one, end to end:
 
 ```flix
 let stickers = "FUBRDRLBDFLDUFDLURLFBRUB"
-    |> String.toList |> List.filterMap(Cube.faceOfToken) |> List.toVector;
-match Cube.Solver.facelets(Cube.Kind.Cube2x2, stickers) {
+    |> String.toList |> List.filterMap(CubeSolvers.faceOfToken) |> List.toVector;
+match CubeSolvers.Solver.facelets(CubeSolvers.Kind.Cube2x2, stickers) {
     case Err(why) => ...                       // not a cube, and why
     case Ok(cube) =>
-        let engine = Cube.Pocket.Engine.standard();
-        Cube.Solver.search(engine, cube, Cube.Solver.defaultOptions())
+        let engine = CubeSolvers.Pocket.Engine.standard();
+        CubeSolvers.Solver.search(engine, cube, CubeSolvers.Solver.defaultOptions())
         //=> Solved(R :: F2 :: U :: R' :: Nil)
 }
 ```
@@ -111,7 +122,7 @@ match Cube.Solver.facelets(Cube.Kind.Cube2x2, stickers) {
 `Move` is a face, a depth and a turn. Depth counts layers from the face, so
 `depth = 1` is the outer layer and `depth = 2` is the `Uw` of standard
 notation. A depth that reaches the far face turns the whole cube, which is a
-rotation and not a move — `Cube.validate` rejects it, and it needs the `Kind`
+rotation and not a move — `CubeSolvers.validate` rejects it, and it needs the `Kind`
 to know where that line falls.
 
 `Turn` has three cases and no identity: a turn that changes nothing is not a
@@ -147,7 +158,7 @@ solvable cube as unsolvable.
 
 `Invalid` splits what a validator can see from what it cannot. Sticker counts
 are checkable without knowing how pieces are built; reachability is not.
-`Cube.Solver.facelets` does the first and leaves the second to the engine —
+`CubeSolvers.Solver.facelets` does the first and leaves the second to the engine —
 and an engine that finds an unreachable state reports `Unsolvable`, never that
 it is unavailable. `TestSolver` pins that boundary with a state that has
 perfect counts and cannot exist.
@@ -188,7 +199,7 @@ let facts = #{
     Dist(next; deeper(d)) :-
         Dist(s; d),
         if (shallowerThan(d, depth)),
-        let next = Cube.Pocket.neighbours(s).
+        let next = CubeSolvers.Pocket.neighbours(s).
 };
 query facts select (s, d) from Dist(s; d)
 ```
@@ -233,7 +244,7 @@ the fixpoint's oracle: `TestSearch` asserts the two agree state for state.
 
 That result invites the obvious next question — if the fixpoint is the fastest
 thing here, why stop at six moves? So we packed a state into one `Int64`
-(`Cube.Pocket.Coord`, seven positions and seven twists, three and two bits
+(`CubeSolvers.Pocket.Coord`, seven positions and seven twists, three and two bits
 each) and asked for the complete table: every one of the 3,674,160 states a
 pocket cube has.
 
@@ -247,7 +258,7 @@ Packing bought about 1.4× at depth 6, not the order of magnitude that would
 have made this viable. So the honest boundary is: **the fixpoint is the best
 way to build a table that fits, and is not a way to build one that does not.**
 A 3x3 needs pruning tables of a few million entries each, and on these numbers
-they want packed arrays, not a `Map` and a fixpoint. `Cube.Pocket.Coord` stays
+they want packed arrays, not a `Map` and a fixpoint. `CubeSolvers.Pocket.Coord` stays
 because the encoding is worth having — a table that is ever written to disk
 will need it — and because the measurement should be repeatable.
 
@@ -279,7 +290,7 @@ not a state.
 **Solutions are short, not shortest.** The engine tries every first-phase
 length from the shortest upwards and finishes each as far as the best answer
 so far allows, then simplifies the seam — but the shortest solution to a cube
-need not have the shape "reduce, then finish" at all. `Cube.Pocket` promises
+need not have the shape "reduce, then finish" at all. `CubeSolvers.Pocket` promises
 optimality; this does not, and says so in its own documentation.
 
 On the one cube checked against min2phase, both return the same eleven moves.

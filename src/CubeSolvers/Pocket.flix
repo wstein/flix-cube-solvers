@@ -7,9 +7,9 @@
 /// corner is how that freedom is spent. What is left is `U`, `R` and `F`, the
 /// only three faces that move anything.
 ///
-mod Cube.Pocket {
+mod CubeSolvers.Pocket {
 
-    use Cube.{Face, Move, Turn}
+    use CubeSolvers.{Face, Move, Turn}
 
     ///
     /// A cube state: where each corner sits, and how far it is twisted.
@@ -55,7 +55,7 @@ mod Cube.Pocket {
     ///
     pub def moves(): Vector[Move] =
         faces() |> Vector.flatMap(f ->
-            Vector#{Turn.Cw, Turn.Half, Turn.Ccw} |> Vector.map(t -> Cube.move(f, 1, t)))
+            Vector#{Turn.Cw, Turn.Half, Turn.Ccw} |> Vector.map(t -> CubeSolvers.move(f, 1, t)))
 
     ///
     /// How a single quarter turn of `f` moves and twists the corners, or
@@ -90,11 +90,11 @@ mod Cube.Pocket {
     /// is a rotation.
     ///
     pub def applyMove(s: State, m: Move): Option[State] =
-        if (Cube.depth(m) != 1)
+        if (CubeSolvers.depth(m) != 1)
             None
         else
-            quarterTurn(Cube.face(m)) |> Option.map(match (cycle, added) ->
-                Vector.range(0, Cube.quarterTurns(Cube.turn(m))) |>
+            quarterTurn(CubeSolvers.face(m)) |> Option.map(match (cycle, added) ->
+                Vector.range(0, CubeSolvers.quarterTurns(CubeSolvers.turn(m))) |>
                     Vector.foldLeft(acc -> _ -> quarter(acc, cycle, added), s))
 
     ///

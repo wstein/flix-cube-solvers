@@ -1,8 +1,8 @@
-mod TestSearch {
+mod TestPocketSearch {
 
-    use Cube.{Face, Turn, move}
-    use Cube.Pocket.{solved, replay}
-    use Cube.Pocket.Search.{table, tableMut, descend, solution}
+    use CubeSolvers.{Face, Turn, move}
+    use CubeSolvers.Pocket.{solved, replay}
+    use CubeSolvers.Pocket.Search.{table, tableMut, descend, solution}
 
     ///
     /// How many states lie within `d` moves of solved, counted independently.

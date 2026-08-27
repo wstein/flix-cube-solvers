@@ -11,11 +11,11 @@
 ///
 mod TestCrossCheck {
 
-    use Cube.{Face, Kind}
-    use Cube.Pocket.{replay, solved}
-    use Cube.Pocket.Engine.prepared
-    use Cube.Pocket.Stickers.ofFacelets
-    use Cube.Solver.{Facelets, Outcome, defaultOptions, facelets, search}
+    use CubeSolvers.{Face, Kind}
+    use CubeSolvers.Pocket.{replay, solved}
+    use CubeSolvers.Pocket.Engine.prepared
+    use CubeSolvers.Pocket.Stickers.ofFacelets
+    use CubeSolvers.Solver.{Facelets, Outcome, defaultOptions, facelets, search}
 
     ///
     /// Sticker string, the shortest solution length, and what the Java engine
@@ -32,7 +32,7 @@ mod TestCrossCheck {
     /// A sticker string as a cube, counted on the way in.
     ///
     def read(text: String): Option[Facelets] =
-        let stickers = text |> String.toList |> List.filterMap(Cube.faceOfToken) |> List.toVector;
+        let stickers = text |> String.toList |> List.filterMap(CubeSolvers.faceOfToken) |> List.toVector;
         facelets(Kind.Cube2x2, stickers) |> Result.toOption
 
     ///
@@ -44,15 +44,15 @@ mod TestCrossCheck {
     @Test
     def theRubikCubeIsSolvedNoWorseThanTheOtherEngine(): Unit \ Assert =
         let text = "UUUUUUUUUBLFRRRRRRFFRFFFFFFDDDDDDDDDLRLLLLLLLRBBBBBBBB";
-        let stickers = text |> String.toList |> List.filterMap(Cube.faceOfToken) |> List.toVector;
-        match Cube.Solver.facelets(Kind.Cube3x3, stickers) {
+        let stickers = text |> String.toList |> List.filterMap(CubeSolvers.faceOfToken) |> List.toVector;
+        match CubeSolvers.Solver.facelets(Kind.Cube3x3, stickers) {
             case Err(why)   => Assert.assertEq(expected = "a countable cube", "${why}")
-            case Ok(cube)   => match Cube.Solver.search(Cube.Rubik.Engine.prepared(), cube, defaultOptions()) {
-                case Cube.Solver.Outcome.Solved(ms) =>
+            case Ok(cube)   => match CubeSolvers.Solver.search(CubeSolvers.Rubik.Engine.prepared(), cube, defaultOptions()) {
+                case CubeSolvers.Solver.Outcome.Solved(ms) =>
                     Assert.assertEq(expected = true, List.length(ms) <= 11);
                     Assert.assertEq(
-                        expected = Ok(Some(Cube.Rubik.solved())),
-                        Result.map(state -> Cube.Rubik.replay(state, ms), Cube.Rubik.Stickers.ofFacelets(cube)))
+                        expected = Ok(Some(CubeSolvers.Rubik.solved())),
+                        Result.map(state -> CubeSolvers.Rubik.replay(state, ms), CubeSolvers.Rubik.Stickers.ofFacelets(cube)))
                 case other => Assert.assertEq(expected = "Solved", "${other}")
             }
         }

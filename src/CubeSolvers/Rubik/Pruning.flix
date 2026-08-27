@@ -7,7 +7,7 @@
 /// distance is never less, so the number is safe to prune with, and the search
 /// that uses it still returns what it would have returned without it.
 ///
-mod Cube.Rubik.Prune {
+mod CubeSolvers.Rubik.Pruning {
 
     ///
     /// Distances from the solved pair to every pair of two coordinates.

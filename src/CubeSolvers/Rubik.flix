@@ -11,9 +11,9 @@
 /// against vectors produced by an independent implementation rather than
 /// trusted.
 ///
-mod Cube.Rubik {
+mod CubeSolvers.Rubik {
 
-    use Cube.{Face, Move, Turn}
+    use CubeSolvers.{Face, Move, Turn}
 
     ///
     /// A cube state: corner positions and twists, then edge positions and
@@ -74,7 +74,7 @@ mod Cube.Rubik {
     ///
     pub def moves(): Vector[Move] =
         faces() |> Vector.flatMap(f ->
-            Vector#{Turn.Cw, Turn.Half, Turn.Ccw} |> Vector.map(t -> Cube.move(f, 1, t)))
+            Vector#{Turn.Cw, Turn.Half, Turn.Ccw} |> Vector.map(t -> CubeSolvers.move(f, 1, t)))
 
     ///
     /// How a quarter turn of `f` moves the pieces.
@@ -141,11 +141,11 @@ mod Cube.Rubik {
     /// two rather than a move.
     ///
     pub def applyMove(s: State, m: Move): Option[State] =
-        if (Cube.depth(m) != 1)
+        if (CubeSolvers.depth(m) != 1)
             None
         else
-            let table = quarterTurn(Cube.face(m));
-            Some(Vector.range(0, Cube.quarterTurns(Cube.turn(m)))
+            let table = quarterTurn(CubeSolvers.face(m));
+            Some(Vector.range(0, CubeSolvers.quarterTurns(CubeSolvers.turn(m)))
                 |> Vector.foldLeft(acc -> _ -> quarter(acc, table), s))
 
     ///

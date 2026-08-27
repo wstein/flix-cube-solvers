@@ -1,7 +1,7 @@
 mod TestSolver {
 
-    use Cube.{Face, Kind}
-    use Cube.Solver.{Invalid, facelets, solved, stickersOf, kindOf}
+    use CubeSolvers.{Face, Kind}
+    use CubeSolvers.Solver.{Invalid, facelets, solved, stickersOf, kindOf}
 
     @Test
     def solvedStateIsAcceptedByTheValidator(): Unit \ Assert =

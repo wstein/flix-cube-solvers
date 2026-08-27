@@ -1,15 +1,15 @@
-mod TestStickers {
+mod TestPocketStickers {
 
-    use Cube.{Face, Kind, Turn, move}
-    use Cube.Pocket.{State, solved, replay}
-    use Cube.Pocket.Stickers.{toFacelets, ofFacelets}
-    use Cube.Solver.{Facelets, Invalid, facelets, stickersOf}
+    use CubeSolvers.{Face, Kind, Turn, move}
+    use CubeSolvers.Pocket.{State, solved, replay}
+    use CubeSolvers.Pocket.Stickers.{toFacelets, ofFacelets}
+    use CubeSolvers.Solver.{Facelets, Invalid, facelets, stickersOf}
 
     ///
     /// The sticker string a state shows, as letters.
     ///
     def render(f: Facelets): String =
-        stickersOf(f) |> Vector.toList |> List.map(s -> Char.toString(Cube.faceToken(s))) |> List.join("")
+        stickersOf(f) |> Vector.toList |> List.map(s -> Char.toString(CubeSolvers.faceToken(s))) |> List.join("")
 
     @Test
     def aSolvedCubeShowsEachFaceItsOwnColour(): Unit \ Assert =
@@ -60,11 +60,11 @@ mod TestStickers {
     def aDifferentPuzzleIsRejectedByKind(): Unit \ Assert =
         Assert.assertEq(
             expected = Err(Invalid.WrongKind(Kind.Cube3x3)),
-            ofFacelets(Cube.Solver.solved(Kind.Cube3x3)))
+            ofFacelets(CubeSolvers.Solver.solved(Kind.Cube3x3)))
 
     ///
     /// Every state within `d` moves of solved.
     ///
-    def statesWithin(d: Int32): List[State] = Set.toList(Map.keysOf(Cube.Pocket.Search.table(d)))
+    def statesWithin(d: Int32): List[State] = Set.toList(Map.keysOf(CubeSolvers.Pocket.Search.table(d)))
 
 }

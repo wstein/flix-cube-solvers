@@ -6,11 +6,11 @@
 ///
 mod TestRubikEngine {
 
-    use Cube.{Kind, Move}
-    use Cube.Rubik.{State, solved, replay}
-    use Cube.Rubik.Engine.{prepared, defaultBound}
-    use Cube.Rubik.Stickers.{toFacelets, ofFacelets}
-    use Cube.Solver.{Invalid, Outcome, defaultOptions, kind, search}
+    use CubeSolvers.{Kind, Move}
+    use CubeSolvers.Rubik.{State, solved, replay}
+    use CubeSolvers.Rubik.Engine.{prepared, defaultBound}
+    use CubeSolvers.Rubik.Stickers.{toFacelets, ofFacelets}
+    use CubeSolvers.Solver.{Invalid, Outcome, defaultOptions, kind, search}
 
     def scrambles(): List[String] =
         "D2 F' L2 R2 D2 F B' L' B' D2 L2 B" ::
@@ -18,7 +18,7 @@ mod TestRubikEngine {
         "R U R' U' R' F R2 U' R' U' R U R' F'" :: Nil
 
     def cubeOf(text: String): Option[State] =
-        Cube.parse(text) |> Result.toOption |> Option.flatMap(ms -> replay(solved(), ms))
+        CubeSolvers.parse(text) |> Result.toOption |> Option.flatMap(ms -> replay(solved(), ms))
 
     ///
     /// Every scramble comes back solved, within the bound the engine claims,
@@ -57,6 +57,6 @@ mod TestRubikEngine {
     def anotherPuzzleIsRejectedAtTheBoundary(): Unit \ Assert =
         Assert.assertEq(
             expected = Err(Invalid.WrongKind(Kind.Cube2x2)),
-            ofFacelets(Cube.Solver.solved(Kind.Cube2x2)))
+            ofFacelets(CubeSolvers.Solver.solved(Kind.Cube2x2)))
 
 }

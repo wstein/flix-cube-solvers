@@ -7,12 +7,12 @@
 /// only half turns of the side faces. Reaching them is a search over three
 /// small numbers rather than over the cube, which is what makes it quick.
 ///
-mod Cube.Rubik.Phase1 {
+mod CubeSolvers.Rubik.Reduce {
 
-    use Cube.{Face, Move}
-    use Cube.Rubik.{State, moves}
-    use Cube.Rubik.Coord.{twist, flip, slice, twistTable, flipTable, sliceTable}
-    use Cube.Rubik.Prune.pairTable
+    use CubeSolvers.{Face, Move}
+    use CubeSolvers.Rubik.{State, moves}
+    use CubeSolvers.Rubik.Coordinate.{twist, flip, slice, twistTable, flipTable, sliceTable}
+    use CubeSolvers.Rubik.Pruning.pairTable
 
     ///
     /// Everything the first phase needs, computed once.

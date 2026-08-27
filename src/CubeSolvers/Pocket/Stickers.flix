@@ -8,11 +8,11 @@
 /// `i`, U or D first, and `cornerColour[j]` as the colours corner `j` shows in
 /// that same order when it is home.
 ///
-mod Cube.Pocket.Stickers {
+mod CubeSolvers.Pocket.Stickers {
 
-    use Cube.{Face, Kind}
-    use Cube.Pocket.{State, permutation, twist}
-    use Cube.Solver.{Facelets, Invalid}
+    use CubeSolvers.{Face, Kind}
+    use CubeSolvers.Pocket.{State, permutation, twist}
+    use CubeSolvers.Solver.{Facelets, Invalid}
 
     ///
     /// Where the three stickers of each cubicle sit in a 24-sticker vector.
@@ -76,10 +76,10 @@ mod Cube.Pocket.Stickers {
     /// well-coloured cube that cannot exist.
     ///
     pub def ofFacelets(f: Facelets): Result[Invalid, State] =
-        if (Cube.Solver.kindOf(f) != Kind.Cube2x2)
-            Err(Invalid.WrongKind(Cube.Solver.kindOf(f)))
+        if (CubeSolvers.Solver.kindOf(f) != Kind.Cube2x2)
+            Err(Invalid.WrongKind(CubeSolvers.Solver.kindOf(f)))
         else
-            let stickers = Cube.Solver.stickersOf(f);
+            let stickers = CubeSolvers.Solver.stickersOf(f);
             forM (corners <- Result.traverse(i -> corner(stickers, i), List.range(0, 8));
                   state <- assemble(corners))
                 yield state

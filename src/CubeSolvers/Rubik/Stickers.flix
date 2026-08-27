@@ -6,11 +6,11 @@
 /// whose centres are not the six faces in order is refused rather than
 /// rotated.
 ///
-mod Cube.Rubik.Stickers {
+mod CubeSolvers.Rubik.Stickers {
 
-    use Cube.{Face, Kind}
-    use Cube.Rubik.{State, corners, twists, edges, flips}
-    use Cube.Solver.{Facelets, Invalid}
+    use CubeSolvers.{Face, Kind}
+    use CubeSolvers.Rubik.{State, corners, twists, edges, flips}
+    use CubeSolvers.Solver.{Facelets, Invalid}
 
     ///
     /// The three sticker positions meeting at each corner cubicle, U or D
@@ -121,10 +121,10 @@ mod Cube.Rubik.Stickers {
     /// The cubie state a sticker vector describes, or why it describes none.
     ///
     pub def ofFacelets(f: Facelets): Result[Invalid, State] =
-        if (Cube.Solver.kindOf(f) != Kind.Cube3x3)
-            Err(Invalid.WrongKind(Cube.Solver.kindOf(f)))
+        if (CubeSolvers.Solver.kindOf(f) != Kind.Cube3x3)
+            Err(Invalid.WrongKind(CubeSolvers.Solver.kindOf(f)))
         else
-            let stickers = Cube.Solver.stickersOf(f);
+            let stickers = CubeSolvers.Solver.stickersOf(f);
             forM (_ <- centresAreInOrder(stickers);
                   cs <- Result.traverse(i -> corner(stickers, i), List.range(0, 8));
                   es <- Result.traverse(i -> edge(stickers, i), List.range(0, 12));

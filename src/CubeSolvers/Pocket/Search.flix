@@ -11,10 +11,10 @@
 /// number for the pocket cube is 11 quarter- and half-turns, so a table `t`
 /// moves deep leaves at most `11 - t` moves to find.
 ///
-mod Cube.Pocket.Search {
+mod CubeSolvers.Pocket.Search {
 
-    use Cube.Move
-    use Cube.Pocket.{State, steps, solved}
+    use CubeSolvers.Move
+    use CubeSolvers.Pocket.{State, steps, solved}
 
     ///
     /// Shortest distances from solved to every state within `depth` moves.
@@ -30,7 +30,7 @@ mod Cube.Pocket.Search {
             Dist(next; deeper(d)) :-
                 Dist(s; d),
                 if (shallowerThan(d, depth)),
-                let next = Cube.Pocket.neighbours(s).
+                let next = CubeSolvers.Pocket.neighbours(s).
         };
         query facts select (s, d) from Dist(s; d)
             |> Vector.toList
@@ -58,7 +58,7 @@ mod Cube.Pocket.Search {
         if (d >= depth or List.isEmpty(frontier))
             ()
         else
-            let candidates = List.flatMap(s -> Vector.toList(Cube.Pocket.neighbours(s)), frontier);
+            let candidates = List.flatMap(s -> Vector.toList(CubeSolvers.Pocket.neighbours(s)), frontier);
             let fresh = List.distinct(List.filter(t -> not MutMap.memberOf(t, dist), candidates));
             foreach (t <- fresh)
                 MutMap.put(t, d + 1, dist);
@@ -124,7 +124,7 @@ mod Cube.Pocket.Search {
         depth: Int32,
         s: State,
         remaining: Int32,
-        last: Option[Cube.Face]
+        last: Option[CubeSolvers.Face]
     ): Option[List[Move]] =
         if (Map.get(s, tbl) == Some(remaining))
             descend(tbl, s)
@@ -132,9 +132,9 @@ mod Cube.Pocket.Search {
             None
         else
             steps(s)
-                |> Vector.filter(match (m, _) -> Some(Cube.face(m)) != last)
+                |> Vector.filter(match (m, _) -> Some(CubeSolvers.face(m)) != last)
                 |> Vector.findMap(match (m, t) ->
-                    exactly(tbl, depth, t, remaining - 1, Some(Cube.face(m)))
+                    exactly(tbl, depth, t, remaining - 1, Some(CubeSolvers.face(m)))
                         |> Option.map(rest -> m :: rest))
 
 }

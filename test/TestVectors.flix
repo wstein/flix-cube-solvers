@@ -9,8 +9,8 @@
 ///
 mod TestVectors {
 
-    use Cube.Pocket.{replay, solved}
-    use Cube.Pocket.Stickers.toFacelets
+    use CubeSolvers.Pocket.{replay, solved}
+    use CubeSolvers.Pocket.Stickers.toFacelets
     use Fs.FileRead.{FileRead, runWithIO}
 
     ///
@@ -67,12 +67,12 @@ mod TestVectors {
     ///
     def checkRubikVector(line: String): Unit \ Assert =
         match String.splitOn(substr = "\t", line) {
-            case _ :: _ :: scramble :: expected :: Nil => match Cube.parse(scramble) {
+            case _ :: _ :: scramble :: expected :: Nil => match CubeSolvers.parse(scramble) {
                 case Err(why) => Assert.assertEq(expected = "moves", "${why} in ${scramble}")
                 case Ok(ms)   => Assert.assertEq(
                     expected = Some(expected),
-                    Cube.Rubik.replay(Cube.Rubik.solved(), ms)
-                        |> Option.map(s -> stickerString(Cube.Rubik.Stickers.toFacelets(s))))
+                    CubeSolvers.Rubik.replay(CubeSolvers.Rubik.solved(), ms)
+                        |> Option.map(s -> stickerString(CubeSolvers.Rubik.Stickers.toFacelets(s))))
             }
             case _ => Assert.assertEq(expected = "four fields", line)
         }
@@ -82,7 +82,7 @@ mod TestVectors {
     ///
     def checkVector(line: String): Unit \ Assert =
         match String.splitOn(substr = "\t", line) {
-            case _ :: _ :: scramble :: expected :: Nil => match Cube.parse(scramble) {
+            case _ :: _ :: scramble :: expected :: Nil => match CubeSolvers.parse(scramble) {
                 case Err(why) => Assert.assertEq(expected = "moves", "${why} in ${scramble}")
                 case Ok(ms)   => Assert.assertEq(
                     expected = Some(expected),
@@ -94,10 +94,10 @@ mod TestVectors {
     ///
     /// The sticker string of a cube.
     ///
-    def stickerString(f: Cube.Solver.Facelets): String =
-        Cube.Solver.stickersOf(f)
+    def stickerString(f: CubeSolvers.Solver.Facelets): String =
+        CubeSolvers.Solver.stickersOf(f)
             |> Vector.toList
-            |> List.map(s -> Char.toString(Cube.faceToken(s)))
+            |> List.map(s -> Char.toString(CubeSolvers.faceToken(s)))
             |> List.join("")
 
 }

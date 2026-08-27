@@ -10,10 +10,10 @@
 /// own because a move changes it without reference to the rest: the twist a
 /// corner picks up depends on where it goes, not on which corner it is.
 ///
-mod Cube.Rubik.Coord {
+mod CubeSolvers.Rubik.Coordinate {
 
-    use Cube.Move
-    use Cube.Rubik.{State, applyMove, corners, twists, edges, flips, moves}
+    use CubeSolvers.Move
+    use CubeSolvers.Rubik.{State, applyMove, corners, twists, edges, flips, moves}
 
     ///
     /// How many corner orientations there are: three each for seven corners,
