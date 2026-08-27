@@ -32,6 +32,30 @@ mod TestSearch {
     def theFixpointAgreesWithBreadthFirstSearch(): Unit \ Assert =
         Assert.assertEq(expected = tableMut(4), table(4))
 
+    ///
+    /// The table is a table of *shortest* distances only because `Down`
+    /// reverses the order Flix joins `Int32` in. Pinned here at the lattice
+    /// itself, because the failure it guards against is silent: the wrong
+    /// direction type-checks, terminates, and answers confidently.
+    ///
+    @Test
+    def theLatticeKeepsTheSmallerDistance(): Unit \ Assert =
+        let seeded = #{ Dist(7; Down.Down(5)). Dist(7; Down.Down(2)). };
+        Assert.assertEq(
+            expected = Vector#{(7, Down.Down(2))},
+            query seeded select (s, d) from Dist(s; d))
+
+    ///
+    /// The same property where it matters: `U` is one move from solved, and
+    /// also three -- `U' U' U'`. A table joining upwards would say three.
+    ///
+    @Test
+    def theTableKeepsTheShortRouteNotTheLongOne(): Unit \ Assert =
+        match replay(solved(), move(Face.U, 1, Turn.Cw) :: Nil) {
+            case None    => Assert.assertEq(expected = "a state", "none")
+            case Some(s) => Assert.assertEq(expected = Some(1), Map.get(s, table(3)))
+        }
+
     @Test
     def descendingFromSolvedTakesNoMoves(): Unit \ Assert =
         Assert.assertEq(expected = Some(Nil), descend(table(2), solved()))

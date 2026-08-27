@@ -14,12 +14,18 @@ mod Cube.Solver {
     ///
     /// Anything that can solve a cube.
     ///
-    /// `solve` is effectful because every real engine is: it reads a clock to
-    /// honour the budget, and the table-driven ones touch memory that outlives
-    /// the call. A pure solver may still implement it -- `IO` is a ceiling,
-    /// not an obligation.
+    /// The effect is the implementation's to choose, not this trait's to
+    /// impose. A table-driven engine written in Flix is pure and says so; one
+    /// that reads a clock or a file says `IO`. Declaring `IO` here would take
+    /// purity away from every caller of every solver, for the benefit of the
+    /// engines that do not have it.
     ///
     pub trait Solver[t] {
+
+        ///
+        /// What searching costs in effects.
+        ///
+        type Aef: Eff
 
         ///
         /// The cube kind this solver handles. Handing it any other kind is a
@@ -34,7 +40,7 @@ mod Cube.Solver {
         /// the Datalog fixpoint and the effect handler respectively -- and
         /// neither name can be taken back.
         ///
-        pub def search(solver: t, cube: Facelets, options: Options): Outcome \ IO
+        pub def search(solver: t, cube: Facelets, options: Options): Outcome \ Solver.Aef[t]
 
     }
 
@@ -42,8 +48,9 @@ mod Cube.Solver {
     /// A cube state, one sticker per position, in URFDLB face order and
     /// row-major within each face.
     ///
-    /// Opaque on purpose: every value of this type has been through
-    /// `facelets`, so a solver never has to re-check what it was handed.
+    /// Every value of this type has been counted: either by `facelets`, or by
+    /// an engine writing out a cubie state it already holds. A solver never
+    /// has to re-check the sticker counts of what it was handed.
     ///
     pub enum Facelets with Eq {
         case Checked(Kind, Vector[Face])
@@ -76,6 +83,10 @@ mod Cube.Solver {
         case StickerCounts(Face, Int32, Int32)
         /// Well-formed, but no sequence of moves reaches it from solved.
         case Unsolvable(String)
+        /// The stickers meeting at the given corner are not any real corner.
+        case NotAPiece(Int32)
+        /// The state describes a different puzzle than the solver handles.
+        case WrongKind(Kind)
     }
 
     ///
@@ -89,6 +100,10 @@ mod Cube.Solver {
                 "Face ${face} appears ${actual} times, expected ${expected}"
             case Invalid.Unsolvable(why) =>
                 "State is unreachable: ${why}"
+            case Invalid.NotAPiece(corner) =>
+                "The stickers at corner ${corner} are not a corner of any cube"
+            case Invalid.WrongKind(k) =>
+                "This solver does not handle a ${k}"
         }
     }
 
@@ -154,12 +169,18 @@ mod Cube.Solver {
     /// says so through `Outcome`, and never by returning a longer solution
     /// than asked for.
     ///
-    pub type alias Options = { timeBudgetMillis = Option[Int64], maxMoves = Option[Int32] }
+    /// A time budget is deliberately absent. `search` takes its effect from
+    /// the engine, and an engine that is pure cannot read a clock -- so a
+    /// deadline in this record would be a promise the contract cannot keep.
+    /// An engine that wants one declares the effect and takes it in its own
+    /// options.
+    ///
+    pub type alias Options = { maxMoves = Option[Int32] }
 
     ///
     /// No bounds: solve until solved.
     ///
-    pub def defaultOptions(): Options = { timeBudgetMillis = None, maxMoves = None }
+    pub def defaultOptions(): Options = { maxMoves = None }
 
     ///
     /// What came back.

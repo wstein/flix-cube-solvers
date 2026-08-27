@@ -1,0 +1,55 @@
+///
+/// Cases checked against an independent implementation.
+///
+/// The round trip in `TestStickers` proves the two sticker tables agree with
+/// each other, which a mirrored layout would also manage. These four cubes
+/// were written out by this package, handed to the Java pocket engine in
+/// `wstein/cube-solvers` -- a different implementation, of different
+/// ancestry -- and it returned a solution of the length recorded here. It
+/// returned the same moves too, but the length is what is asserted: move
+/// order is a tie-break, and shortest is the property.
+///
+mod TestCrossCheck {
+
+    use Cube.{Face, Kind}
+    use Cube.Pocket.{replay, solved}
+    use Cube.Pocket.Engine.prepared
+    use Cube.Pocket.Stickers.ofFacelets
+    use Cube.Solver.{Facelets, Outcome, defaultOptions, facelets, search}
+
+    ///
+    /// Sticker string, the shortest solution length, and what the Java engine
+    /// answered.
+    ///
+    def cases(): List[(String, Int32, String)] =
+        ("FUBRDRLBDFLDUFDLURLFBRUB", 4, "R F2 U R'") ::
+        ("FFLDRLDFBBRRUFDRLULBDUUB", 8, "U R2 F2 U' R F U2 R'") ::
+        ("DLBLUDUBDFBFRRDLFRLUFRUB", 5, "F2 R' F' U' F2") ::
+        ("DUUDLRRLFFFFUDDURLLRBBBB", 4, "U2 R2 U2 F2") ::
+        Nil
+
+    ///
+    /// A sticker string as a cube, counted on the way in.
+    ///
+    def read(text: String): Option[Facelets] =
+        let stickers = text |> String.toList |> List.filterMap(Cube.faceOfToken) |> List.toVector;
+        facelets(Kind.Cube2x2, stickers) |> Result.toOption
+
+    @Test
+    def everyCrossCheckedCubeSolvesInTheLengthTheOtherEngineFound(): Unit \ Assert =
+        let engine = prepared(5);
+        foreach ((text, length, _) <- cases()) {
+            match read(text) {
+                case None      => Assert.assertEq(expected = "a countable cube", "rejected: ${text}")
+                case Some(cube) => match search(engine, cube, defaultOptions()) {
+                    case Outcome.Solved(sol) =>
+                        Assert.assertEq(expected = length, List.length(sol));
+                        Assert.assertEq(
+                            expected = Ok(Some(solved())),
+                            Result.map(state -> replay(state, sol), ofFacelets(cube)))
+                    case other => Assert.assertEq(expected = "Solved", "${other} for ${text}")
+                }
+            }
+        }
+
+}

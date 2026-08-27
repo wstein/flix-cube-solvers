@@ -7,8 +7,8 @@
 [![License](https://img.shields.io/github/license/wstein/flix-cube-solvers?color=blue)](LICENSE)
 
 Rubik's cube solving for [Flix](https://flix.dev): a cube model, a solver
-contract, and a pocket cube engine whose distance table is a Datalog
-fixpoint.
+contract, and a pocket cube engine whose distance table is a Datalog fixpoint
+and whose solutions are shortest.
 
 The first consumer is [`wstein/flix-cube`](https://github.com/wstein/flix-cube).
 This package exists to be depended on, so the contract is the product and the
@@ -16,26 +16,28 @@ engines are implementations of it.
 
 ## Status
 
-Early, and honest about it. What is here compiles, is tested, and is stable
-enough to build against:
+Early, but the whole path works: stickers in, cubies, table, search, moves out.
 
 | Module | What it is | State |
 | --- | --- | --- |
 | `Cube` | Faces, turns, moves, notation, inversion | Done |
 | `Cube.Solver` | `Facelets`, `Invalid`, `Options`, `Outcome`, and the `Solver` trait | Done |
 | `Cube.Pocket` | The 2x2x2 as cubies: permutation, twist, the three faces that turn | Done |
+| `Cube.Pocket.Stickers` | Cubies to facelets and back | Done |
 | `Cube.Pocket.Search` | Datalog distance table, and shortest solutions from it | Done |
-| — | `Facelets` to cubies, so `Cube.Pocket` can implement `Solver` | **Next** |
+| `Cube.Pocket.Engine` | A prepared solver; the first `Solver` instance | Done |
 | — | 3x3 and larger | Not started |
 
-The pocket engine works and its solutions are shortest, but it is reached
-through `Cube.Pocket`, not yet through the `Solver` trait: nothing decodes a
-sticker vector into cubies. That layer is the next piece of work.
+Solutions are checked against the Java pocket engine in
+[`wstein/cube-solvers`](https://github.com/wstein/cube-solvers) — a different
+implementation of different ancestry. On every case tried it returns the same
+length, and so far the same moves; four are pinned as fixtures in
+`TestCrossCheck`.
 
 ## Quick start
 
 ```sh
-./flixw test         # 32 tests, no toolchain to install
+./flixw test         # 47 tests, no toolchain to install
 ./flixw run          # the demo entry point
 ./flixw check        # type-check; the fast loop
 ./flixw format       # reformat in place before committing
@@ -53,13 +55,32 @@ repository; see [`wstein/flixw`](https://github.com/wstein/flixw).
 │   ├── Cube.flix                 the model: Kind, Face, Turn, Move, notation
 │   ├── Solver.flix               the contract: Facelets, Invalid, Options, Outcome, Solver
 │   ├── Pocket.flix               the 2x2x2 cubie model and its move tables
+│   ├── Stickers.flix             the facelet boundary, both directions
 │   ├── Search.flix               the Datalog distance table and the search over it
+│   ├── Engine.flix               a prepared solver, and the Solver instance
 │   └── Main.flix                 a demo entry point, not part of the library
 └── test/
     ├── TestCube.flix             notation, inversion, depth rules
     ├── TestSolver.flix           what the validator can and cannot see
     ├── TestPocket.flix           move mechanics: orders, inverses, what is not a move
-    └── TestSearch.flix           table sizes against the published figures, and optimality
+    ├── TestStickers.flix         the round trip, and the states that are not cubes
+    ├── TestSearch.flix           table sizes against the published figures, and optimality
+    ├── TestEngine.flix           the contract as a caller meets it
+    └── TestCrossCheck.flix       cubes solved to the same length by another engine
+```
+
+Solving one, end to end:
+
+```flix
+let stickers = "FUBRDRLBDFLDUFDLURLFBRUB"
+    |> String.toList |> List.filterMap(Cube.faceOfToken) |> List.toVector;
+match Cube.Solver.facelets(Cube.Kind.Cube2x2, stickers) {
+    case Err(why) => ...                       // not a cube, and why
+    case Ok(cube) =>
+        let engine = Cube.Pocket.Engine.standard();
+        Cube.Solver.search(engine, cube, Cube.Solver.defaultOptions())
+        //=> Solved(R :: F2 :: U :: R' :: Nil)
+}
 ```
 
 ## The model
@@ -108,9 +129,25 @@ and an engine that finds an unreachable state reports `Unsolvable`, never that
 it is unavailable. `TestSolver` pins that boundary with a state that has
 perfect counts and cannot exist.
 
-`search` is `\ IO` because every real engine is: it reads a clock to honour a
-budget, and the table-driven ones touch memory that outlives the call. `IO` is
-a ceiling, not an obligation — a pure solver may still implement it.
+`search` has no fixed effect. The trait carries an associated effect and each
+engine states its own:
+
+```flix
+pub trait Solver[t] {
+    type Aef: Eff
+    pub def kind(solver: t): Kind
+    pub def search(solver: t, cube: Facelets, options: Options): Outcome \ Solver.Aef[t]
+}
+```
+
+The pocket engine declares `type Aef = {}` — no clock, no file, no state
+outliving the call — so it can be used from a pure function. Declaring `IO` on
+the trait would have taken that from every caller of every solver for the
+benefit of the engines that do not have it.
+
+That decision removed a field. `Options` had a time budget, and a pure engine
+cannot read a clock, so no engine could ever have honoured it. It is gone;
+`maxMoves` remains, and it is what makes `BudgetSpent` reachable.
 
 ## The engine
 

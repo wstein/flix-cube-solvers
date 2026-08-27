@@ -106,7 +106,7 @@ mod Cube.Pocket.Search {
     /// Lengths are tried in order, so the first solution found is optimal.
     ///
     pub def solution(tbl: Map[State, Int32], depth: Int32, s: State, maxLength: Int32): Option[List[Move]] =
-        List.range(0, maxLength + 1) |> List.findMap(total -> exactly(tbl, depth, s, total))
+        List.range(0, maxLength + 1) |> List.findMap(total -> exactly(tbl, depth, s, total, None))
 
     ///
     /// A solution of exactly `remaining` moves, if one exists.
@@ -115,13 +115,26 @@ mod Cube.Pocket.Search {
     /// and not in it cannot be solved in `remaining` moves at all -- which is
     /// what stops the walk from growing past the half it is responsible for.
     ///
-    def exactly(tbl: Map[State, Int32], depth: Int32, s: State, remaining: Int32): Option[List[Move]] =
+    /// Turning the same face twice in a row is never part of a shortest
+    /// solution -- the pair is one move or none -- so `last` drops those
+    /// branches and takes the walk from nine ways to six.
+    ///
+    def exactly(
+        tbl: Map[State, Int32],
+        depth: Int32,
+        s: State,
+        remaining: Int32,
+        last: Option[Cube.Face]
+    ): Option[List[Move]] =
         if (Map.get(s, tbl) == Some(remaining))
             descend(tbl, s)
         else if (remaining <= depth)
             None
         else
-            steps(s) |> Vector.findMap(match (m, t) ->
-                exactly(tbl, depth, t, remaining - 1) |> Option.map(rest -> m :: rest))
+            steps(s)
+                |> Vector.filter(match (m, _) -> Some(Cube.face(m)) != last)
+                |> Vector.findMap(match (m, t) ->
+                    exactly(tbl, depth, t, remaining - 1, Some(Cube.face(m)))
+                        |> Option.map(rest -> m :: rest))
 
 }
