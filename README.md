@@ -341,16 +341,11 @@ yet; when there is:
 
 ## License
 
-Apache-2.0. See [LICENSE](LICENSE).
+GPL-3.0-or-later. See [LICENSE](LICENSE) and [NOTICE.md](NOTICE.md).
 
-Every engine here is written from the published description of the cube and of
-the algorithms — the cubie model, the coordinates, the two-phase method — and
-not ported from an existing implementation. That is deliberate: the Java
-family's 3x3 and 5x5 engines are GPL-3.0-or-later because they carry ported
-code, and this package would inherit that the moment it did the same.
-
-If bindings onto the JVM engines land here, this changes for the aggregate:
-`cube-3x3-min2phase` and `cube-5x5-fivephase` are GPL-3.0-or-later, and
-anything linking them inherits that. See
-[`NOTICE.md`](https://github.com/wstein/cube-solvers/blob/main/NOTICE.md) in
-the Java family for the full picture.
+The 4x4 follows Tsai's method by way of
+[TPR-4x4x4-Solver](https://github.com/cs0x7f/TPR-4x4x4-Solver), whose
+coordinates are involved enough that reading the reference implementation is
+the honest way to get them right. TPR offers `MIT OR GPL-3.0-or-later`; this
+project takes the GPL option and applies it to the whole package, a Flix
+package being one artifact that a consumer links whole.
