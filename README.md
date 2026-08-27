@@ -35,6 +35,7 @@ Early, but the whole path works: stickers in, cubies, table, search, moves out.
 | `CubeSolvers.Rubik.Finish` | The finish, using only U, D and half turns | Done |
 | `CubeSolvers.Rubik.Engine` | A prepared 3x3 solver; the second `Solver` instance | Done |
 | `CubeSolvers.Revenge.Centers` | The 4x4 centres, in three tabulated stages | Done |
+| `CubeSolvers.Revenge.Wings` | The 4x4 wings: which stickers are one piece, which pairs share a place | Done |
 | — | 4x4 edge pairing, then the 3x3 finish and its parities | **In progress** |
 | — | The 5x5 | Not started |
 
@@ -54,7 +55,7 @@ different levels:
 ## Quick start
 
 ```sh
-./flixw test         # 75 tests, about 30s: the 4x4 tables are built and checked
+./flixw test         # 81 tests, about 40s: the 4x4 tables are built and checked
 ./flixw check        # type-check; the fast loop
 ./flixw format       # reformat in place before committing
 ```
@@ -318,8 +319,15 @@ they can never be separated — the slice alone is `Rw` then `R` undone. Restric
 the move set that way and the centres reach 2,187 of their 735,471
 arrangements, and the table looks fine while being useless.
 
-Still to come: pairing the 24 wings into 12 edges, then handing the result to
-the 3x3 engine, then the two parities a 4x4 can present that a 3x3 cannot.
+The wings are modelled but not yet paired. Which stickers form one piece is
+derived rather than tabulated: two stickers are the same wing when they sit on
+the same cubie, and the geometry already knows where every sticker's cubie is.
+Turning an outer layer never pairs or unpairs anything — both wings of a place
+travel together — so pairing is exactly the work the slices have to do.
+
+Still to come: pairing the 24 wings into 12 places, handing the result to the
+3x3 engine, and the two parities a 4x4 can present that a 3x3 cannot. The
+target for a finished solve is 50 to 60 moves.
 
 ## Depending on it
 
