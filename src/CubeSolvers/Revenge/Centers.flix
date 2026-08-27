@@ -100,6 +100,18 @@ mod CubeSolvers.Revenge.Centers {
         }
 
     ///
+    /// How many ways to choose `k` of `n`, for every `n` and `k` a centre
+    /// coordinate can ask for.
+    ///
+    /// Computed once and handed to the ranking. Recomputing it inside `rank`
+    /// was most of the cost of building a table: eight of these per ranking,
+    /// thirty-six rankings per state, three quarters of a million states.
+    ///
+    pub def binomials(): Vector[Vector[Int32]] =
+        Vector.range(0, 25) |> Vector.map(n ->
+            Vector.range(0, 9) |> Vector.map(k -> binomial(n, k)))
+
+    ///
     /// How many ways to choose `k` of `n`.
     ///
     def binomial(n: Int32, k: Int32): Int32 =
@@ -107,6 +119,38 @@ mod CubeSolvers.Revenge.Centers {
             0
         else
             List.range(0, k) |> List.foldLeft(acc -> i -> acc * (n - i) / (i + 1), 1)
+
+    ///
+    /// The place of a sorted subset, given the binomials.
+    ///
+    def rankFast(binoms: Vector[Vector[Int32]], subset: Vector[Int32]): Int32 =
+        subset |> Vector.sort |> Vector.mapWithIndex(i -> p ->
+            Vector.get(i + 1, Vector.get(p, binoms))) |> Vector.sum
+
+    ///
+    /// The `k`-subset at a place, given the binomials.
+    ///
+    def unrankFast(binoms: Vector[Vector[Int32]], n: Int32, k: Int32, r: Int32): Vector[Int32] =
+        region rc {
+            let out = Array.repeat(rc, k, 0);
+            descendSubset(binoms, out, n - 1, k, r);
+            Array.toVector(out)
+        }
+
+    ///
+    /// Fills a subset from the top down: the largest slot whose weight still
+    /// fits belongs to it.
+    ///
+    def descendSubset(binoms: Vector[Vector[Int32]], out: Array[Int32, r], p: Int32, k: Int32, left: Int32): Unit \ r =
+        if (k == 0 or p < 0)
+            ()
+        else
+            let weight = Vector.get(k, Vector.get(p, binoms));
+            if (weight <= left) {
+                Array.put(p, k - 1, out);
+                descendSubset(binoms, out, p - 1, k - 1, left - weight)
+            } else
+                descendSubset(binoms, out, p - 1, k, left)
 
     ///
     /// The moves that leave a finished separation finished.
@@ -173,7 +217,76 @@ mod CubeSolvers.Revenge.Centers {
     ///
     /// The exact number of moves each second-stage arrangement is from done.
     ///
-    pub def axisTable(): Vector[Int32] = distances(axisCount(), axisSolved(), axisMoves(), 16, 8)
+    pub def axisTable(): Vector[Int32] =
+        let binoms = binomials();
+        let steps = axisMoves();
+        CubeSolvers.Distances.of(axisCount(), axisSolved(), at ->
+            neighbours(binoms, steps, 16, 8, at))
+
+    ///
+    /// Every state one move from `at`, for a subset coordinate.
+    ///
+    /// The subset travels as a bit per slot rather than as eight numbers.
+    /// Moving it is then a bit per slot too, and ranking it is one scan --
+    /// where a list of slots would have to be sorted first, thirty-six times
+    /// for every state in the table.
+    ///
+    def neighbours(
+        binoms: Vector[Vector[Int32]],
+        steps: Vector[Vector[Int32]],
+        n: Int32,
+        k: Int32,
+        at: Int32
+    ): Vector[Int32] =
+        let mask = maskOf(binoms, n, k, at);
+        steps |> Vector.map(step -> rankOfMask(binoms, n, moveMask(step, mask, n, 0, 0)))
+
+    ///
+    /// The subset at a place, as one bit per slot.
+    ///
+    def maskOf(binoms: Vector[Vector[Int32]], n: Int32, k: Int32, r: Int32): Int32 =
+        climb(binoms, n - 1, k, r, 0)
+
+    ///
+    /// Fills the mask from the top slot down.
+    ///
+    def climb(binoms: Vector[Vector[Int32]], p: Int32, k: Int32, left: Int32, mask: Int32): Int32 =
+        if (k == 0 or p < 0)
+            mask
+        else
+            let weight = Vector.get(k, Vector.get(p, binoms));
+            if (weight <= left)
+                climb(binoms, p - 1, k - 1, left - weight, Int32.setBit(pos = p, mask))
+            else
+                climb(binoms, p - 1, k, left, mask)
+
+    ///
+    /// The mask after a move: every slot's bit goes where the slot goes.
+    ///
+    def moveMask(step: Vector[Int32], mask: Int32, n: Int32, p: Int32, out: Int32): Int32 =
+        if (p >= n)
+            out
+        else if (Int32.bitwiseAnd(Int32.rightShift(mask, p), 1) == 1)
+            moveMask(step, mask, n, p + 1, Int32.setBit(pos = Vector.get(p, step), out))
+        else
+            moveMask(step, mask, n, p + 1, out)
+
+    ///
+    /// The place of a subset given as a mask: one scan, no sorting.
+    ///
+    def rankOfMask(binoms: Vector[Vector[Int32]], n: Int32, mask: Int32): Int32 =
+        countUp(binoms, mask, n, 0, 0, 0)
+
+    ///
+    /// Adds each chosen slot's weight, in slot order.
+    ///
+    def countUp(binoms: Vector[Vector[Int32]], mask: Int32, n: Int32, p: Int32, taken: Int32, acc: Int32): Int32 =
+        if (p >= n)
+            acc
+        else if (Int32.bitwiseAnd(Int32.rightShift(mask, p), 1) == 1)
+            countUp(binoms, mask, n, p + 1, taken + 1, acc + Vector.get(taken + 1, Vector.get(p, binoms)))
+        else
+            countUp(binoms, mask, n, p + 1, taken, acc)
 
     ///
     /// The moves that leave both separations finished.
@@ -245,51 +358,16 @@ mod CubeSolvers.Revenge.Centers {
     /// The exact number of moves each colour arrangement is from done.
     ///
     pub def colourTable(): Vector[Int32] =
-        region rc {
-            let dist = Array.repeat(rc, colourCount(), -1);
-            Array.put(0, coloursSolved(), dist);
-            let steps = colourMoves();
-            colourWalk(dist, coloursSolved() :: Nil, steps, 0);
-            Array.toVector(dist)
-        }
-
-    ///
-    /// Marks everything one move past `frontier`, then recurses.
-    ///
-    def colourWalk(
-        dist: Array[Int32, r],
-        frontier: List[Int32],
-        steps: Vector[Vector[Vector[Int32]]],
-        d: Int32
-    ): Unit \ r =
-        if (List.isEmpty(frontier))
-            ()
-        else
-            let next = List.foldLeft(acc -> at -> colourReach(dist, acc, at, steps, d), Nil, frontier);
-            colourWalk(dist, next, steps, d + 1)
-
-    ///
-    /// Every unmarked neighbour of one colour arrangement.
-    ///
-    def colourReach(
-        dist: Array[Int32, r],
-        acc: List[Int32],
-        at: Int32,
-        steps: Vector[Vector[Vector[Int32]]],
-        d: Int32
-    ): List[Int32] \ r =
-        let parts = Vector#{at / 4900, (at / 70) `Int32.modulo` 70, at `Int32.modulo` 70}
-            |> Vector.map(r -> unrankOf(8, 4, r));
-        Vector.foldLeft(seen -> step -> {
-            let moved = Vector.range(0, 3) |> Vector.map(p ->
-                rankOf(8, 4, Vector.map(slot -> Vector.get(slot, Vector.get(p, step)), Vector.get(p, parts))));
-            let to = (Vector.get(0, moved) * 70 + Vector.get(1, moved)) * 70 + Vector.get(2, moved);
-            if (Array.get(to, dist) < 0) {
-                Array.put(d + 1, to, dist);
-                to :: seen
-            } else
-                seen
-        }, acc, steps)
+        let binoms = binomials();
+        let steps = colourMoves();
+        CubeSolvers.Distances.of(colourCount(), coloursSolved(), at -> {
+            let parts = Vector#{at / 4900, (at / 70) `Int32.modulo` 70, at `Int32.modulo` 70}
+                |> Vector.map(r -> unrankFast(binoms, 8, 4, r));
+            steps |> Vector.map(step ->
+                let moved = Vector.range(0, 3) |> Vector.map(p ->
+                    rankFast(binoms, Vector.map(slot -> Vector.get(slot, Vector.get(p, step)), Vector.get(p, parts))));
+                (Vector.get(0, moved) * 70 + Vector.get(1, moved)) * 70 + Vector.get(2, moved))
+        })
 
     ///
     /// The three tables, built once.
@@ -362,115 +440,16 @@ mod CubeSolvers.Revenge.Centers {
         subset |> Vector.sort |> Vector.mapWithIndex(i -> p -> binomial(p, i + 1)) |> Vector.sum
 
     ///
-    /// The `k`-subset of `n` at the given place.
-    ///
-    def unrankOf(n: Int32, k: Int32, r: Int32): Vector[Int32] =
-        let (_, picked) = List.foldLeft(state -> j -> takeOf(n, state, j), (r, Nil), List.reverse(List.range(1, k + 1)));
-        List.toVector(picked)
-
-    ///
-    /// Takes the largest slot whose weight still fits, for an `n`-slot world.
-    ///
-    def takeOf(n: Int32, state: (Int32, List[Int32]), k: Int32): (Int32, List[Int32]) =
-        let (left, found) = state;
-        match List.maximum(List.filter(q -> binomial(q, k) <= left, List.range(0, n))) {
-            case Some(q) => (left - binomial(q, k), q :: found)
-            case None    => (left, found)
-        }
-
-    ///
-    /// Breadth-first distances over any subset coordinate.
-    ///
-    def distances(size: Int32, goal: Int32, steps: Vector[Vector[Int32]], n: Int32, k: Int32): Vector[Int32] =
-        region rc {
-            let dist = Array.repeat(rc, size, -1);
-            Array.put(0, goal, dist);
-            walk(dist, goal :: Nil, steps, n, k, 0);
-            Array.toVector(dist)
-        }
-
-    ///
-    /// Marks everything one move past `frontier`, then recurses.
-    ///
-    def walk(
-        dist: Array[Int32, r],
-        frontier: List[Int32],
-        steps: Vector[Vector[Int32]],
-        n: Int32,
-        k: Int32,
-        d: Int32
-    ): Unit \ r =
-        if (List.isEmpty(frontier))
-            ()
-        else
-            let next = List.foldLeft(acc -> at -> reach(dist, acc, at, steps, n, k, d), Nil, frontier);
-            walk(dist, next, steps, n, k, d + 1)
-
-    ///
-    /// Every unmarked neighbour of one arrangement.
-    ///
-    def reach(
-        dist: Array[Int32, r],
-        acc: List[Int32],
-        at: Int32,
-        steps: Vector[Vector[Int32]],
-        n: Int32,
-        k: Int32,
-        d: Int32
-    ): List[Int32] \ r =
-        let subset = unrankOf(n, k, at);
-        Vector.foldLeft(seen -> step -> {
-            let to = rankOf(n, k, Vector.map(slot -> Vector.get(slot, step), subset));
-            if (Array.get(to, dist) < 0) {
-                Array.put(d + 1, to, dist);
-                to :: seen
-            } else
-                seen
-        }, acc, steps)
-
-    ///
     /// The exact number of moves each separation is from solved.
     ///
     /// Breadth first from the solved state over the wide turns, marking as it
     /// goes. Seconds, once.
     ///
     pub def table(): Vector[Int32] =
-        region rc {
-            let dist = Array.repeat(rc, count(), -1);
-            Array.put(0, solved(), dist);
-            let steps = slotMoves();
-            sweep(dist, solved() :: Nil, steps, 0);
-            Array.toVector(dist)
-        }
+        let binoms = binomials();
+        let steps = slotMoves();
+        CubeSolvers.Distances.of(count(), solved(), at ->
+            neighbours(binoms, steps, 24, 8, at))
 
-    ///
-    /// Marks everything one move past `frontier`, then recurses.
-    ///
-    def sweep(dist: Array[Int32, r], frontier: List[Int32], steps: Vector[Vector[Int32]], d: Int32): Unit \ r =
-        if (List.isEmpty(frontier))
-            ()
-        else
-            let next = List.foldLeft(acc -> at -> expand(dist, acc, at, steps, d), Nil, frontier);
-            sweep(dist, next, steps, d + 1)
-
-    ///
-    /// Every unmarked neighbour of one separation, marked and collected.
-    ///
-    def expand(
-        dist: Array[Int32, r],
-        acc: List[Int32],
-        at: Int32,
-        steps: Vector[Vector[Int32]],
-        d: Int32
-    ): List[Int32] \ r =
-        let subset = unrank(at);
-        Vector.foldLeft(seen -> step -> {
-            let to = rank(Vector.map(slot -> Vector.get(slot, step), subset));
-            if (Array.get(to, dist) < 0) {
-                Array.put(d + 1, to, dist);
-                to :: seen
-            } else
-                seen
-        }, acc, steps)
 
 }

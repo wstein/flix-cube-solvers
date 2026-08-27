@@ -17,54 +17,12 @@ mod CubeSolvers.Rubik.Pruning {
     /// because a coordinate pair is already its own index.
     ///
     pub def pairTable(aMoves: Vector[Vector[Int32]], bMoves: Vector[Vector[Int32]]): Vector[Int32] =
-        region rc {
-            let bCount = Vector.length(bMoves);
-            let size = Vector.length(aMoves) * bCount;
-            let dist = Array.repeat(rc, size, -1);
-            Array.put(0, 0, dist);
-            sweep(dist, 0 :: Nil, aMoves, bMoves, bCount, 0);
-            Array.toVector(dist)
-        }
-
-    ///
-    /// Marks everything one move past `frontier`, then recurses on what was
-    /// new.
-    ///
-    def sweep(
-        dist: Array[Int32, r],
-        frontier: List[Int32],
-        aMoves: Vector[Vector[Int32]],
-        bMoves: Vector[Vector[Int32]],
-        bCount: Int32,
-        d: Int32
-    ): Unit \ r =
-        if (List.isEmpty(frontier))
-            ()
-        else
-            let next = List.foldLeft(acc -> index -> step(dist, acc, index, aMoves, bMoves, bCount, d), Nil, frontier);
-            sweep(dist, next, aMoves, bMoves, bCount, d + 1)
-
-    ///
-    /// Every unmarked neighbour of one pair, marked and collected.
-    ///
-    def step(
-        dist: Array[Int32, r],
-        acc: List[Int32],
-        index: Int32,
-        aMoves: Vector[Vector[Int32]],
-        bMoves: Vector[Vector[Int32]],
-        bCount: Int32,
-        d: Int32
-    ): List[Int32] \ r =
-        let a = Vector.get(index / bCount, aMoves);
-        let b = Vector.get(index `Int32.modulo` bCount, bMoves);
-        List.foldLeft(seen -> m -> {
-            let to = Vector.get(m, a) * bCount + Vector.get(m, b);
-            if (Array.get(to, dist) < 0) {
-                Array.put(d + 1, to, dist);
-                to :: seen
-            } else
-                seen
-        }, acc, List.range(0, Vector.length(a)))
+        let bCount = Vector.length(bMoves);
+        let size = Vector.length(aMoves) * bCount;
+        CubeSolvers.Distances.of(size, 0, at ->
+            let a = Vector.get(at / bCount, aMoves);
+            let b = Vector.get(at `Int32.modulo` bCount, bMoves);
+            Vector.range(0, Vector.length(a)) |> Vector.map(m ->
+                Vector.get(m, a) * bCount + Vector.get(m, b)))
 
 }
