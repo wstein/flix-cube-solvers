@@ -1,7 +1,7 @@
 [package]
 name        = "flix-cube-solvers"
-description = "Rubik's cube model and solver contract for Flix"
-version     = "0.1.0"
+description = "Rubik's cube model, solver contract, and 2x2 and 3x3 engines for Flix"
+version     = "0.2.0"
 # Exactly x.y.z, three integers: "0.75" or a -suffix is rejected. The compiler checks
 # the shape and ignores the value; flixw enforces it as the floor the lock satisfies.
 flix        = "0.75.0"
