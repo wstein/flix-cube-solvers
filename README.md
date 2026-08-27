@@ -1,141 +1,190 @@
-# flix-template
+# flix-cube-solvers
 
-[![Build and Test](https://github.com/wstein/flix-template/actions/workflows/build-and-test.yaml/badge.svg)](https://github.com/wstein/flix-template/actions/workflows/build-and-test.yaml)
-[![Flix](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fwstein%2Fflix-template%2Fmain%2F.flixw%2Flock.toml&query=%24.compiler.version&label=flix&color=blue)](.flixw/lock.toml)
-[![flixw](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fwstein%2Fflix-template%2Fmain%2F.flixw%2Flock.toml&query=%24.wrapperVersion&label=flixw&color=blue)](https://github.com/wstein/flixw)
+[![Build and Test](https://github.com/wstein/flix-cube-solvers/actions/workflows/build-and-test.yaml/badge.svg)](https://github.com/wstein/flix-cube-solvers/actions/workflows/build-and-test.yaml)
+[![Flix](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fwstein%2Fflix-cube-solvers%2Fmain%2F.flixw%2Flock.toml&query=%24.compiler.version&label=flix&color=blue)](.flixw/lock.toml)
+[![flixw](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fwstein%2Fflix-cube-solvers%2Fmain%2F.flixw%2Flock.toml&query=%24.wrapperVersion&label=flixw&color=blue)](https://github.com/wstein/flixw)
 [![Java](https://img.shields.io/badge/java-21%2B-blue)](https://adoptium.net/temurin/releases/?version=21)
-[![License](https://img.shields.io/github/license/wstein/flix-template?color=blue)](LICENSE)
+[![License](https://img.shields.io/github/license/wstein/flix-cube-solvers?color=blue)](LICENSE)
 
-A GitHub template for starting a [Flix](https://flix.dev) project, and a
-worked example of [`flixw`](https://github.com/wstein/flixw) — a
-repository-local bootstrap that fetches the compiler the project pins instead
-of relying on whatever `flix` happens to be installed.
+Rubik's cube solving for [Flix](https://flix.dev): a cube model, a solver
+contract, and a pocket cube engine whose distance table is a Datalog
+fixpoint.
+
+The first consumer is [`wstein/flix-cube`](https://github.com/wstein/flix-cube).
+This package exists to be depended on, so the contract is the product and the
+engines are implementations of it.
+
+## Status
+
+Early, and honest about it. What is here compiles, is tested, and is stable
+enough to build against:
+
+| Module | What it is | State |
+| --- | --- | --- |
+| `Cube` | Faces, turns, moves, notation, inversion | Done |
+| `Cube.Solver` | `Facelets`, `Invalid`, `Options`, `Outcome`, and the `Solver` trait | Done |
+| `Cube.Pocket` | The 2x2x2 as cubies: permutation, twist, the three faces that turn | Done |
+| `Cube.Pocket.Search` | Datalog distance table, and shortest solutions from it | Done |
+| — | `Facelets` to cubies, so `Cube.Pocket` can implement `Solver` | **Next** |
+| — | 3x3 and larger | Not started |
+
+The pocket engine works and its solutions are shortest, but it is reached
+through `Cube.Pocket`, not yet through the `Solver` trait: nothing decodes a
+sticker vector into cubies. That layer is the next piece of work.
 
 ## Quick start
 
-Click **Use this template**, clone your copy, and run it:
-
 ```sh
-./flixw run          # .\flixw.cmd run on Windows
+./flixw test         # 32 tests, no toolchain to install
+./flixw run          # the demo entry point
+./flixw check        # type-check; the fast loop
+./flixw format       # reformat in place before committing
 ```
 
-The only prerequisite is a JDK, Java 21 or newer. You do not need Flix
-installed: the first command downloads `flix.jar` for the version pinned in
-`.flixw/lock.toml`, checks it against the SHA-256 committed alongside it, caches
-it outside the repository, and runs it. Later commands reuse the cache.
-
-```sh
-./flixw check        # type-check; the fast feedback loop
-./flixw test         # run every @Test function under test/
-./flixw format       # reformat sources in place
-./flixw validate     # the wrapper's own consistency checks; what CI runs first
-./flixw doctor       # validate, plus the full picture, for bug reports
-```
+The only prerequisite is a JDK, Java 21 or newer. `flixw` fetches the compiler
+pinned in `.flixw/lock.toml`, verifies its SHA-256 and caches it outside the
+repository; see [`wstein/flixw`](https://github.com/wstein/flixw).
 
 ## What is in here
 
 ```
 .
 ├── src/
-│   └── Main.flix                 mod Hello, and the main that prints its greeting
-├── test/
-│   └── TestMain.flix             @Test functions covering Hello.greeting
-├── .flixw/
-│   ├── flixw.java                the wrapper proper — one dependency-free Java file
-│   └── lock.toml                 the exact compiler, its URL, and its SHA-256
-├── .github/
-│   ├── workflows/
-│   │   ├── build-and-test.yaml   validate, check and test, on three platforms
-│   │   ├── update-flix.yaml      weekly: re-pin the compiler, open a pull request
-│   │   └── docs.yaml             build the API docs, publish them to Pages
-│   └── dependabot.yml            keeps the workflows' pinned action digests current
-├── flix.toml                     package metadata and the lowest Flix version accepted
-├── flixw                         the POSIX shim
-├── flixw.cmd                     the cmd.exe trampoline
-├── AGENTS.md                     instructions for coding agents; CLAUDE.md and
-│                                 .github/copilot-instructions.md point at it
-└── LICENSE                       Apache-2.0, with the copyright line to replace
+│   ├── Cube.flix                 the model: Kind, Face, Turn, Move, notation
+│   ├── Solver.flix               the contract: Facelets, Invalid, Options, Outcome, Solver
+│   ├── Pocket.flix               the 2x2x2 cubie model and its move tables
+│   ├── Search.flix               the Datalog distance table and the search over it
+│   └── Main.flix                 a demo entry point, not part of the library
+└── test/
+    ├── TestCube.flix             notation, inversion, depth rules
+    ├── TestSolver.flix           what the validator can and cannot see
+    ├── TestPocket.flix           move mechanics: orders, inverses, what is not a move
+    └── TestSearch.flix           table sizes against the published figures, and optimality
 ```
 
-`flix.toml` states a *floor* and `.flixw/lock.toml` states the *pin*. They are
-allowed to differ — any pin at or above the floor satisfies it — but
-`./flixw validate` fails when the pin does not, so the two cannot drift apart
-unnoticed.
+## The model
 
-## What the wrapper is and is not
+`Move` is a face, a depth and a turn. Depth counts layers from the face, so
+`depth = 1` is the outer layer and `depth = 2` is the `Uw` of standard
+notation. A depth that reaches the far face turns the whole cube, which is a
+rotation and not a move — `Cube.validate` rejects it, and it needs the `Kind`
+to know where that line falls.
 
-`flixw` never patches, forks or links against the Flix compiler. It fetches the
-stock `flix.jar` by URL, verifies the digest before every use, and runs it as an
-opaque process. Moving to another compiler is `./flixw pin <version>`, which
-rewrites the lock; updating the wrapper itself is
-`./flixw wrapper --upgrade`.
+`Turn` has three cases and no identity: a turn that changes nothing is not a
+turn. The same reasoning puts the size inside `Kind` rather than beside it, so
+an unsupported cube cannot be constructed and then rejected later.
 
-Two things are worth knowing before you adopt it. `flixw` is upstream-described
-as experimental, and it is code your project executes on every build — which is
-why it is committed in full and pinned by version and digest rather than curled
-at run time. Read `.flixw/flixw.java` if that matters to you; it is deliberately
-one file.
+Two Flix facts shaped the code more than any design taste:
 
-## Continuous integration
+- **Records do not derive traits.** `Move` began as
+  `{ face = Face, depth = Int32, turn = Turn }` and could not derive `Eq` or
+  `ToString`, which makes it useless in a test or a set. Domain types here are
+  enums with accessor functions.
+- **`solve` and `run` are both keywords** — the Datalog fixpoint and the
+  effect handler. The trait method is `search`.
 
-`.github/workflows/build-and-test.yaml` runs `validate`, `check` and `test`
-through the wrapper on Linux, macOS and Windows — the Windows leg exercises
-`flixw.cmd`, the others the POSIX shim. It installs a JDK and nothing else,
-which is the same starting position a new contributor is in. The compiler is
-restored from the runner cache, keyed on `.flixw/lock.toml`, and its digest is
-re-verified whether it came from the cache or the network. Actions are pinned to
-commit digests and kept current by Dependabot.
+## The contract
 
-There is no formatting gate: the pinned compiler's `format` has no check-only
-mode, so run `./flixw format` before you commit.
+`Outcome` carries the solution in the one case that has one:
 
-`.github/workflows/update-flix.yaml` runs weekly. Dependabot has no ecosystem
-for a compiler pinned by URL and digest, so this is its counterpart: it resolves
-the newest `flix/flix` release, re-pins, runs `validate`, `check` and `test`,
-and opens a pull request if all three pass. It never pushes to the default
-branch — the digest in a re-pinned lock is computed by the runner, and that is
-the thing worth reading before merging.
+```flix
+pub enum Outcome with Eq, ToString {
+    case Solved(MoveSequence)
+    case Rejected(Invalid)
+    case BudgetSpent
+    case Exhausted
+}
+```
 
-`.github/workflows/docs.yaml` runs `./flixw doc` on every push to `main` and
-publishes this project's own pages to GitHub Pages — for this repository, at
-<https://wstein.github.io/flix-template/>.
+`Exhausted` means the engine searched what it can search and there is nothing
+there. `BudgetSpent` means it ran out of the caller's time or moves and makes
+no claim either way. Conflating the two is how a solver ends up reporting a
+solvable cube as unsolvable.
 
-`flix doc` renders the whole standard library alongside the project and has no
-option to narrow that: `--Xlib` decides what is *compiled*, and without the
-library nothing compiles at all. Its `index.html` is the stdlib's `Prelude`
-page. So the workflow picks out the project's pages afterwards — by which ones
-carry a source link into the workspace, which no library page does — writes its
-own landing page listing them, and refuses to publish at all if that finds
-nothing. A link check then fails the build if anything published points at a
-page that was not.
+`Invalid` splits what a validator can see from what it cannot. Sticker counts
+are checkable without knowing how pieces are built; reachability is not.
+`Cube.Solver.facelets` does the first and leaves the second to the engine —
+and an engine that finds an unreachable state reports `Unsolvable`, never that
+it is unavailable. `TestSolver` pins that boundary with a state that has
+perfect counts and cannot exist.
 
-One upstream quirk is worked around there too. `flix doc` builds each `Source`
-link by appending the documented file's path to the standard library's own base
-URL on `flix/flix`, which for this project's files yields a 404 with the build
-machine's absolute path inside it. The workflow rewrites those into permalinks
-at the published commit, and fails if any filesystem path survives.
+`search` is `\ IO` because every real engine is: it reads a clock to honour a
+budget, and the table-driven ones touch memory that outlives the call. `IO` is
+a ceiling, not an obligation — a pure solver may still implement it.
 
-Pages has to be enabled once, under **Settings → Pages** with source
-**GitHub Actions**: the default `GITHUB_TOKEN` cannot create a Pages site even
-with `pages: write`. Until it is, the documentation is still built and the run
-warns rather than failing, so a fresh copy of this template does not start red.
+## The engine
 
-## After you template this
+A pocket cube is eight corners, and holding one still spends the freedom to
+rotate the whole cube — so a state is a permutation and a twist, and the only
+moves are `U`, `R` and `F`.
 
-1. `flix.toml` — set `name`, `description`, `version` and `authors`. The package
-   name is yours to choose; nothing requires it to match the repository name.
-2. `LICENSE` — replace the copyright line, or the whole license.
-3. `src/` and `test/` — replace the greeting with your own code.
-4. This README — the badge URLs and the documentation link. Until you point
-   them at your own repository they report this one's state, not yours. CI
-   fails on the first push until you do, and names every URL still pointing
-   here.
-5. **Settings → Pages**, source **GitHub Actions**, if you want the published
-   documentation. Skip it and `docs.yaml` just warns.
+The distance table is a Datalog fixpoint. Seed the solved state, let one rule
+walk the move graph, and read off the shortest distance to everything within
+reach:
 
-The Flix and `flixw` badges read `.flixw/lock.toml` directly, so re-pinning with
-`./flixw pin <version>` updates them without touching this file.
+```flix
+let facts = #{
+    Dist(solved(); Down.Down(0)).
+    Dist(next; deeper(d)) :-
+        Dist(s; d),
+        if (shallowerThan(d, depth)),
+        let next = Cube.Pocket.neighbours(s).
+};
+query facts select (s, d) from Dist(s; d)
+```
+
+No queue, no visited set, no loop. Two things about that rule are worth
+knowing:
+
+- **`Down[Int32]`, not `Int32`.** In a lattice position Flix joins `Int32`
+  *upwards*, so a plain count converges on the longest walk found rather than
+  the shortest. `Down` reverses the order. Nothing type-checks differently;
+  the table is simply wrong.
+- **`let next = neighbours(s)` is a generator**, not a binding: the function
+  returns a `Vector` and the rule fires once per element. It is what lets the
+  fixpoint walk a graph that was never materialised as facts.
+
+The table checks out against the published pocket cube figures — 1, 9, 54,
+321, 1847, 9992, 50136 new states per level in the half-turn metric — which is
+what `TestSearch` asserts, and what makes the move tables trustworthy.
+
+Solving meets the table in the middle: walk out from the scrambled state until
+you land on a state the table knows, then follow the table downhill. Lengths
+are tried in order, so the first solution found is a shortest one. God's number
+for the pocket cube is 11, so a table `t` moves deep leaves at most `11 - t` to
+find.
+
+### Is Datalog worth it here?
+
+Measured, not assumed. Building the depth-6 table (62,360 states) on an M-series
+laptop, wall clock minus the ~3.1s compile:
+
+| Implementation | Time | CPU |
+| --- | --- | --- |
+| Datalog fixpoint | **~5.8s** | 689% |
+| Breadth-first, mutable `MutMap` in a region | ~14.8s | 272% |
+| Breadth-first, immutable `Map` | ~32.6s | 192% |
+
+The engine parallelises semi-naive evaluation; the hand-written loops do not.
+The breadth-first version survives as `tableMut`, where it earns its keep as
+the fixpoint's oracle: `TestSearch` asserts the two agree state for state.
+
+## Depending on it
+
+Flix resolves package dependencies from GitHub releases. There is no release
+yet; when there is:
+
+```toml
+[dependencies]
+"github:wstein/flix-cube-solvers" = "0.1.0"
+```
 
 ## License
 
 Apache-2.0. See [LICENSE](LICENSE).
+
+If bindings onto the JVM engines land here, this changes for the aggregate:
+`cube-3x3-min2phase` and `cube-5x5-fivephase` are GPL-3.0-or-later, and
+anything linking them inherits that. See
+[`NOTICE.md`](https://github.com/wstein/cube-solvers/blob/main/NOTICE.md) in
+the Java family for the full picture.
