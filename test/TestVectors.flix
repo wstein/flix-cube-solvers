@@ -41,6 +41,43 @@ mod TestVectors {
         }
 
     ///
+    /// The same for the 3x3, where the vectors are general scrambles: all six
+    /// faces, and nothing pinned.
+    ///
+    @Test
+    def everyRubikVectorScramblesToItsRecordedCube(): Unit \ Assert + IO =
+        runWithIO(() -> checkRubikVectors())
+
+    ///
+    /// Every 3x3 vector, replayed through the cubie model and compared
+    /// sticker for sticker.
+    ///
+    def checkRubikVectors(): Unit \ Assert + FileRead =
+        match FileRead.readLines(path()) {
+            case Err(_)    => Assert.assertEq(expected = "the vectors", "cannot read ${path()}")
+            case Ok(lines) =>
+                let rubik = lines |> List.filter(String.startsWith(prefix = "3x3\t"));
+                Assert.assertEq(expected = 5, List.length(rubik));
+                foreach (line <- rubik)
+                    checkRubikVector(line)
+        }
+
+    ///
+    /// One 3x3 line: size, seed, scramble, stickers.
+    ///
+    def checkRubikVector(line: String): Unit \ Assert =
+        match String.splitOn(substr = "\t", line) {
+            case _ :: _ :: scramble :: expected :: Nil => match Cube.parse(scramble) {
+                case Err(why) => Assert.assertEq(expected = "moves", "${why} in ${scramble}")
+                case Ok(ms)   => Assert.assertEq(
+                    expected = Some(expected),
+                    Cube.Rubik.replay(Cube.Rubik.solved(), ms)
+                        |> Option.map(s -> stickerString(Cube.Rubik.Stickers.toFacelets(s))))
+            }
+            case _ => Assert.assertEq(expected = "four fields", line)
+        }
+
+    ///
     /// One line: size, seed, scramble, stickers.
     ///
     def checkVector(line: String): Unit \ Assert =

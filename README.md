@@ -26,7 +26,10 @@ Early, but the whole path works: stickers in, cubies, table, search, moves out.
 | `Cube.Pocket.Stickers` | Cubies to facelets and back | Done |
 | `Cube.Pocket.Search` | Datalog distance table, and shortest solutions from it | Done |
 | `Cube.Pocket.Engine` | A prepared solver; the first `Solver` instance | Done |
-| — | 3x3 and larger | Not started |
+| `Cube.Rubik` | The 3x3x3 as cubies: corners, edges, twists, flips, all six faces | Done |
+| `Cube.Rubik.Stickers` | 54 stickers to cubies and back, with the three laws | Done |
+| — | The 3x3 search: two phases, coordinates, pruning tables | **In progress** |
+| — | 4x4 and larger | Not started |
 
 Checked against the Java implementation in
 [`wstein/cube-solvers`](https://github.com/wstein/cube-solvers), twice over and
@@ -43,7 +46,7 @@ at two different levels:
 ## Quick start
 
 ```sh
-./flixw test         # 56 tests, no toolchain to install
+./flixw test         # 57 tests, no toolchain to install
 ./flixw run          # the demo entry point
 ./flixw check        # type-check; the fast loop
 ./flixw format       # reformat in place before committing
@@ -61,6 +64,8 @@ repository; see [`wstein/flixw`](https://github.com/wstein/flixw).
 │   ├── Cube.flix                 the model: Kind, Face, Turn, Move, notation both ways
 │   ├── Solver.flix               the contract: Facelets, Invalid, Options, Outcome, Solver
 │   ├── Pocket.flix               the 2x2x2 cubie model and its move tables
+│   ├── Rubik.flix                the 3x3x3 cubie model and its move tables
+│   ├── RubikStickers.flix        the 3x3 facelet boundary and the three laws
 │   ├── Stickers.flix             the facelet boundary, both directions
 │   ├── Search.flix               the Datalog distance table and the search over it
 │   ├── Coord.flix                states packed into one Int64, and what that buys
