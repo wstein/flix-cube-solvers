@@ -22,6 +22,7 @@ Early, but the whole path works: stickers in, cubies, table, search, moves out.
 | --- | --- | --- |
 | `CubeSolvers` | Faces, turns, moves, notation, inversion | Done |
 | `CubeSolvers.Solver` | `Facelets`, `Invalid`, `Options`, `Outcome`, and the `Solver` trait | Done |
+| `CubeSolvers.Turning` | Turning any cube at sticker level, 2x2 through 5x5 | Done |
 | `CubeSolvers.Pocket` | The 2x2x2 as cubies: permutation, twist, the three faces that turn | Done |
 | `CubeSolvers.Pocket.Stickers` | Cubies to facelets and back | Done |
 | `CubeSolvers.Pocket.Search` | Datalog distance table, and shortest solutions from it | Done |
@@ -33,7 +34,7 @@ Early, but the whole path works: stickers in, cubies, table, search, moves out.
 | `CubeSolvers.Rubik.Reduce` | The search into the subgroup no side quarter turn is needed from | Done |
 | `CubeSolvers.Rubik.Finish` | The finish, using only U, D and half turns | Done |
 | `CubeSolvers.Rubik.Engine` | A prepared 3x3 solver; the second `Solver` instance | Done |
-| — | 4x4 and larger | Not started |
+| — | 4x4 and 5x5 engines | Not started |
 
 Checked against the Java implementation in
 [`wstein/cube-solvers`](https://github.com/wstein/cube-solvers), at two
@@ -51,7 +52,7 @@ different levels:
 ## Quick start
 
 ```sh
-./flixw test         # 68 tests, no toolchain to install
+./flixw test         # 70 tests, no toolchain to install
 ./flixw check        # type-check; the fast loop
 ./flixw format       # reformat in place before committing
 ```

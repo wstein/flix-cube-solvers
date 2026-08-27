@@ -57,6 +57,29 @@ mod TestCrossCheck {
             }
         }
 
+    ///
+    /// A solution checked by a path that does not share the engine's model.
+    ///
+    /// The engines answer in cubies and are verified in cubies, which cannot
+    /// catch a cubie model that is wrong in the same way twice. Replaying the
+    /// solution as a plain permutation of stickers can.
+    ///
+    @Test
+    def solutionsSurviveBeingReplayedAsStickers(): Unit \ Assert =
+        let text = "UUUUUUUUUBLFRRRRRRFFRFFFFFFDDDDDDDDDLRLLLLLLLRBBBBBBBB";
+        let stickers = text |> String.toList |> List.filterMap(CubeSolvers.faceOfToken) |> List.toVector;
+        match CubeSolvers.Solver.facelets(Kind.Cube3x3, stickers) {
+            case Err(why) => Assert.assertEq(expected = "a countable cube", "${why}")
+            case Ok(cube) => match CubeSolvers.Solver.search(CubeSolvers.Rubik.Engine.prepared(), cube, defaultOptions()) {
+                case CubeSolvers.Solver.Outcome.Solved(ms) => Assert.assertEq(
+                    expected = Ok(true),
+                    CubeSolvers.Turning.replay(cube, ms)
+                        |> Result.map(CubeSolvers.Turning.isSolved)
+                        |> Result.mapErr(e -> "${e}"))
+                case other => Assert.assertEq(expected = "Solved", "${other}")
+            }
+        }
+
     @Test
     def everyCrossCheckedCubeSolvesInTheLengthTheOtherEngineFound(): Unit \ Assert =
         let engine = prepared(5);

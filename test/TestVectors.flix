@@ -9,6 +9,7 @@
 ///
 mod TestVectors {
 
+    use CubeSolvers.Kind
     use CubeSolvers.Pocket.{replay, solved}
     use CubeSolvers.Pocket.Stickers.toFacelets
     use Fs.FileRead.{FileRead, runWithIO}
@@ -76,6 +77,54 @@ mod TestVectors {
             }
             case _ => Assert.assertEq(expected = "four fields", line)
         }
+
+    ///
+    /// Every vector of every size, through the sticker engine.
+    ///
+    /// The cubie models cover 2x2 and 3x3 only. This one covers all four
+    /// sizes with one definition, so a wrong 4x4 or 5x5 wide turn shows up
+    /// here rather than in whatever is built on it later.
+    ///
+    @Test
+    def everyVectorOfEverySizeTurnsToItsRecordedCube(): Unit \ Assert + IO =
+        runWithIO(() -> checkEverySize())
+
+    ///
+    /// All twenty vectors, replayed at sticker level.
+    ///
+    def checkEverySize(): Unit \ Assert + FileRead =
+        match FileRead.readLines(path()) {
+            case Err(_)    => Assert.assertEq(expected = "the vectors", "cannot read ${path()}")
+            case Ok(lines) =>
+                let vectors = lines |> List.filter(l ->
+                    not (String.startsWith(prefix = "#", l) or String.isEmpty(String.trim(l))));
+                Assert.assertEq(expected = 20, List.length(vectors));
+                foreach (line <- vectors)
+                    checkAnySize(line)
+        }
+
+    ///
+    /// One line of any size: replay it and compare stickers.
+    ///
+    def checkAnySize(line: String): Unit \ Assert =
+        match String.splitOn(substr = "\t", line) {
+            case size :: _ :: scramble :: expected :: Nil =>
+                match (kindOfLabel(size), CubeSolvers.parse(scramble)) {
+                    case (Some(k), Ok(ms)) => Assert.assertEq(
+                        expected = Ok(expected),
+                        CubeSolvers.Turning.replay(CubeSolvers.Solver.solved(k), ms)
+                            |> Result.map(stickerString)
+                            |> Result.mapErr(e -> "${e}"))
+                    case _ => Assert.assertEq(expected = "a size and a scramble", line)
+                }
+            case _ => Assert.assertEq(expected = "four fields", line)
+        }
+
+    ///
+    /// The kind a label like `4x4` names.
+    ///
+    def kindOfLabel(label: String): Option[Kind] =
+        String.toList(label) |> List.head |> Option.flatMap(c -> Char.digit(radix = 10, c)) |> Option.flatMap(CubeSolvers.kindOfOrder)
 
     ///
     /// One line: size, seed, scramble, stickers.
