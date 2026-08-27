@@ -64,6 +64,58 @@ mod CubeSolvers.Rubik.Reduce {
         search(t, (twist(s), flip(s), slice(s)), depth, -1)
 
     ///
+    /// Up to `cap` different reductions of exactly `depth` moves.
+    ///
+    /// One reduction is rarely the best to hand on: a slightly awkward first
+    /// phase often leaves a much tidier second, and the only way to find that
+    /// out is to try several. The cap is there because the number of
+    /// reductions grows quickly with depth and the second phase is what costs.
+    ///
+    pub def manyExactly(t: Tables, s: State, depth: Int32, cap: Int32): List[List[Move]] =
+        collect(t, (twist(s), flip(s), slice(s)), depth, -1, cap)
+
+    ///
+    /// Every reduction of exactly `depth` moves from here, up to `cap` of
+    /// them.
+    ///
+    def collect(t: Tables, at: (Int32, Int32, Int32), depth: Int32, last: Int32, cap: Int32): List[List[Move]] =
+        let lower = bound(t, at);
+        if (lower > depth or cap <= 0)
+            Nil
+        else if (depth == 0)
+            if (lower == 0) (Nil :: Nil) else Nil
+        else
+            List.range(0, 18)
+                |> List.filter(m -> allowed(m, last))
+                |> List.foldLeft(acc -> m ->
+                    let room = cap - List.length(acc);
+                    if (room <= 0)
+                        acc
+                    else
+                        let deeper = collect(t, stepTo(t, at, m), depth - 1, m, room);
+                        acc ::: List.map(rest -> Vector.get(m, moves()) :: rest, deeper),
+                    Nil)
+
+    ///
+    /// Where a move takes the three coordinates.
+    ///
+    def stepTo(t: Tables, at: (Int32, Int32, Int32), m: Int32): (Int32, Int32, Int32) =
+        let (a, b, c) = at;
+        (Vector.get(m, Vector.get(a, t#twistMoves)),
+         Vector.get(m, Vector.get(b, t#flipMoves)),
+         Vector.get(m, Vector.get(c, t#sliceMoves)))
+
+    ///
+    /// The lower bound on the moves left, from the two pruning tables.
+    ///
+    def bound(t: Tables, at: (Int32, Int32, Int32)): Int32 =
+        let (a, b, c) = at;
+        let sliceCount = Vector.length(t#sliceMoves);
+        Int32.max(
+            Vector.get(a * sliceCount + c, t#twistSlice),
+            Vector.get(b * sliceCount + c, t#flipSlice))
+
+    ///
     /// The lower bound on how many moves this cube still needs.
     ///
     /// Two exact distances in two smaller worlds; the cube cannot be closer

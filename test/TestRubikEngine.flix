@@ -51,6 +51,35 @@ mod TestRubikEngine {
         }
 
     ///
+    /// Every 3x3 can be solved in twenty moves, and this engine is expected
+    /// to stay under that mark rather than merely somewhere near it.
+    ///
+    /// Two-phase search does not guarantee it -- the shortest solution need
+    /// not split into "reduce, then finish" -- so it is asserted on cubes
+    /// rather than argued.
+    ///
+    @Test
+    def solutionsStayWithinTwentyMoves(): Unit \ Assert =
+        let engine = prepared();
+        let harder =
+            "D2 F' L2 R2 D2 F B' L' B' D2 L2 B" ::
+            "L' R U2 F2 U' R' B L B2 R2 F' D2" ::
+            "F L R F' U L' B2 R D' L F2 L" ::
+            "B' F' L' D R' L2 B U2 L D2 F2 R2" ::
+            "U2 D2 L2 R2 F2 B2 U D L R F B U' D' L' R'" :: Nil;
+        foreach (text <- harder) {
+            match cubeOf(text) {
+                case None    => Assert.assertEq(expected = "a cube", "unparsed: ${text}")
+                case Some(s) => match search(engine, toFacelets(s), defaultOptions()) {
+                    case Outcome.Solved(ms) =>
+                        Assert.assertEq(expected = true, List.length(ms) <= 20);
+                        Assert.assertEq(expected = Some(solved()), replay(s, ms))
+                    case other => Assert.assertEq(expected = "Solved", "${other} for ${text}")
+                }
+            }
+        }
+
+    ///
     /// The kind check needs no tables, so it does not pay for any.
     ///
     @Test

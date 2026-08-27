@@ -69,10 +69,29 @@ mod CubeSolvers.Rubik.Engine {
         best: Option[List[Move]]
     ): Option[List[Move]] =
         let bestLength = best |> Option.map(List.length) |> Option.getWithDefault(maxMoves + 1);
-        if (d1 > deepestFirstPhase() or d1 >= bestLength)
+        if (d1 > deepestFirstPhase() or d1 >= bestLength or bestLength <= goodEnough())
             best
         else
             attempt(t1, t2, s, d1 + 1, maxMoves, improve(t1, t2, s, d1, bestLength, best))
+
+    ///
+    /// How many different first phases of one length to try.
+    ///
+    /// The second phase is what costs, so this is a budget rather than a
+    /// limit: more candidates means shorter solutions and slower solving.
+    /// At twenty-four the longest of seven test cubes came out at 21 moves,
+    /// at two hundred at 21, and at a thousand at 20.
+    ///
+    def candidates(): Int32 = 1000
+
+    ///
+    /// Short enough to stop looking.
+    ///
+    /// Every 3x3 can be solved in twenty moves, so a solution that long is
+    /// worth keeping rather than spending more time to shave. Without this
+    /// the search keeps trying lengths it has already beaten.
+    ///
+    def goodEnough(): Int32 = 20
 
     ///
     /// The better of `best` and whatever a first phase of `d1` moves leads to.
@@ -85,18 +104,17 @@ mod CubeSolvers.Rubik.Engine {
         bestLength: Int32,
         best: Option[List[Move]]
     ): Option[List[Move]] =
-        match Reduce.exactly(t1, s, d1) {
-            case None      => best
-            case Some(one) => match replay(s, one) {
-                case None     => best
-                case Some(g1) => match Finish.finish(t2, g1, bestLength - d1 - 1) {
-                    case None      => best
+        Reduce.manyExactly(t1, s, d1, candidates()) |> List.foldLeft(soFar -> one ->
+            let limit = soFar |> Option.map(List.length) |> Option.getWithDefault(bestLength);
+            match replay(s, one) {
+                case None     => soFar
+                case Some(g1) => match Finish.finish(t2, g1, limit - d1 - 1) {
+                    case None      => soFar
                     case Some(two) =>
                         let whole = CubeSolvers.simplify(one ::: two);
-                        if (List.length(whole) < bestLength) Some(whole) else best
+                        if (List.length(whole) < limit) Some(whole) else soFar
                 }
-            }
-        }
+            }, best)
 
     ///
     /// The 3x3 engine reads no clock and touches nothing that outlives the

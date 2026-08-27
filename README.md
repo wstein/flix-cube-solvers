@@ -55,7 +55,7 @@ different levels:
 ## Quick start
 
 ```sh
-./flixw test         # 81 tests, about 40s: the 4x4 tables are built and checked
+./flixw test         # 82 tests, about 16s: the tables are built and checked
 ./flixw check        # type-check; the fast loop
 ./flixw format       # reformat in place before committing
 ```
