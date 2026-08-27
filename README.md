@@ -52,7 +52,6 @@ different levels:
 
 ```sh
 ./flixw test         # 68 tests, no toolchain to install
-./flixw run          # the demo entry point
 ./flixw check        # type-check; the fast loop
 ./flixw format       # reformat in place before committing
 ```
@@ -67,7 +66,7 @@ repository; see [`wstein/flixw`](https://github.com/wstein/flixw).
 .
 ├── src/
 │   ├── CubeSolvers.flix              the model: Kind, Face, Turn, Move, notation both ways
-│   ├── CubeSolvers/
+│   └── CubeSolvers/
 │   │   ├── Solver.flix               the contract: Facelets, Invalid, Options, Outcome, Solver
 │   │   ├── Pocket.flix               the 2x2x2 cubie model and its move tables
 │   │   ├── Pocket/
@@ -83,7 +82,6 @@ repository; see [`wstein/flixw`](https://github.com/wstein/flixw).
 │   │       ├── Reduce.flix           the search into the subgroup
 │   │       ├── Finish.flix           the finish inside it
 │   │       └── Engine.flix           both phases, and the Solver instance
-│   └── Main.flix                     a demo entry point, not part of the library
 └── test/
     ├── TestCube.flix                 notation, inversion, depth rules
     ├── TestSolver.flix               what the validator can and cannot see
