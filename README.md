@@ -34,8 +34,9 @@ Early, but the whole path works: stickers in, cubies, table, search, moves out.
 | `CubeSolvers.Rubik.Reduce` | The search into the subgroup no side quarter turn is needed from | Done |
 | `CubeSolvers.Rubik.Finish` | The finish, using only U, D and half turns | Done |
 | `CubeSolvers.Rubik.Engine` | A prepared 3x3 solver; the second `Solver` instance | Done |
-| `CubeSolvers.Revenge.Centers` | The 4x4 centre separation: 735,471 arrangements, all within 8 moves | Done |
-| — | The rest of the 4x4 reduction, and the 5x5 | **In progress** |
+| `CubeSolvers.Revenge.Centers` | The 4x4 centres, in three tabulated stages | Done |
+| — | 4x4 edge pairing, then the 3x3 finish and its parities | **In progress** |
+| — | The 5x5 | Not started |
 
 Checked against the Java implementation in
 [`wstein/cube-solvers`](https://github.com/wstein/cube-solvers), at two
@@ -53,7 +54,7 @@ different levels:
 ## Quick start
 
 ```sh
-./flixw test         # 75 tests, no toolchain to install
+./flixw test         # 75 tests, about 30s: the 4x4 tables are built and checked
 ./flixw check        # type-check; the fast loop
 ./flixw format       # reformat in place before committing
 ```
@@ -294,6 +295,31 @@ need not have the shape "reduce, then finish" at all. `CubeSolvers.Pocket` promi
 optimality; this does not, and says so in its own documentation.
 
 On the one cube checked against min2phase, both return the same eleven moves.
+
+## The 4x4, so far
+
+A 4x4 is solved by reduction: make it behave like a 3x3, then solve that. The
+centres are the first obstacle, and they are done — in three stages, each with
+a table of exact distances, so each is walked downhill rather than searched:
+
+| Stage | Arrangements | Deepest | Moves it may use |
+| --- | --- | --- | --- |
+| U and D colours onto U and D | 735,471 | 8 | all 36 |
+| F and B colours onto F and B | 12,870 | 9 | the 24 that keep stage one |
+| right colour on the right face | 343,000 | 11 | the 24 that keep both |
+
+Every arrangement of every stage is reachable, which is what makes the stages
+complete, and the whole thing is about a megabyte of table.
+
+One finding is worth repeating, because it cost an afternoon: **the first
+stage needs the outer turns as well as the wide ones.** A wide turn is the
+outer layer and the slice beneath it moving together, and with only wide turns
+they can never be separated — the slice alone is `Rw` then `R` undone. Restrict
+the move set that way and the centres reach 2,187 of their 735,471
+arrangements, and the table looks fine while being useless.
+
+Still to come: pairing the 24 wings into 12 edges, then handing the result to
+the 3x3 engine, then the two parities a 4x4 can present that a 3x3 cannot.
 
 ## Depending on it
 
