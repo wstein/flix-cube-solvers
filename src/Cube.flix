@@ -225,6 +225,80 @@ mod Cube {
         "${prefix}${faceToken(face(m))}${wide}${suffix}"
 
     ///
+    /// The move a token stands for, or what is wrong with the token.
+    ///
+    /// Reads what `renderMove` writes: an optional depth, a face, `w` for a
+    /// wide turn, and a suffix. `R` is the outer layer, `Rw` the outer pair,
+    /// `3Rw` three deep. A depth without a `w` is refused rather than guessed
+    /// at, because `3R` means the third slice alone in some notations and
+    /// three layers in others.
+    ///
+    pub def parseMove(token: String): Result[String, Move] =
+        let (digits, rest) = List.span(Char.isDigit, String.toList(token));
+        match rest {
+            case letter :: tail => forM (
+                    f <- faceOfToken(letter) |> Option.toOk("Not a face: ${letter}");
+                    d <- parseDepth(digits, tail);
+                    t <- parseTurn(dropWide(tail)))
+                yield move(f, d, t)
+            case Nil => Err("Not a move: ${token}")
+        }
+
+    ///
+    /// The rest of a token after its `w`, if it had one.
+    ///
+    def dropWide(tail: List[Char]): List[Char] = match tail {
+        case 'w' :: rest => rest
+        case _           => tail
+    }
+
+    ///
+    /// How deep a token turns, from its digits and whether it is wide.
+    ///
+    def parseDepth(digits: List[Char], tail: List[Char]): Result[String, Int32] =
+        let wide = List.head(tail) == Some('w');
+        match (digits, wide) {
+            case (Nil, false) => Ok(1)
+            case (Nil, true)  => Ok(2)
+            case (ds, true)   =>
+                forM (n <- Int32.fromString(digitsToString(ds)) |> Option.toOk("Not a depth: ${digitsToString(ds)}");
+                      ok <- if (n > 1) Ok(n) else Err("A wide turn is at least two layers deep, not ${n}"))
+                    yield ok
+            case (ds, false)  => Err("A depth needs a 'w': ${digitsToString(ds)}")
+        }
+
+    ///
+    /// Digits as the number they spell.
+    ///
+    /// `List.toString` would render them as a list -- `3 :: Nil` -- which
+    /// parses as nothing at all.
+    ///
+    def digitsToString(ds: List[Char]): String = ds |> List.map(Char.toString) |> List.join("")
+
+    ///
+    /// How far a token turns, from what follows its face.
+    ///
+    def parseTurn(suffix: List[Char]): Result[String, Turn] = match suffix {
+        case Nil       => Ok(Turn.Cw)
+        case '2' :: Nil => Ok(Turn.Half)
+        case '\'' :: Nil => Ok(Turn.Ccw)
+        case other     => Err("Not a turn: ${digitsToString(other)}")
+    }
+
+    ///
+    /// The sequence a line of notation stands for.
+    ///
+    /// Whitespace separates moves and nothing else does, so an empty string
+    /// is an empty sequence rather than an error.
+    ///
+    pub def parse(text: String): Result[String, MoveSequence] =
+        text
+            |> String.splitOn(substr = " ")
+            |> List.map(String.trim)
+            |> List.filter(t -> not String.isEmpty(t))
+            |> Result.traverse(parseMove)
+
+    ///
     /// The given sequence in standard notation, one space between moves.
     ///
     pub def render(ms: MoveSequence): String =
