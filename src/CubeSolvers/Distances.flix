@@ -21,13 +21,29 @@ mod CubeSolvers.Distances {
     /// meaningful rather than a bug.
     ///
     pub def of(size: Int32, goal: Int32, next: Int32 -> Vector[Int32] \ ef): Vector[Int32] \ ef =
+        ofMany(size, Vector#{goal}, next)
+
+    ///
+    /// How far each state is from the nearest of several goals.
+    ///
+    /// A phase can have more than one finish. Tsai's second phase leaves the
+    /// R and L centres in any of twelve arrangements the third can still
+    /// repair, and a table measuring the distance to the closest of them is
+    /// what lets the walk stop at whichever it reaches first.
+    ///
+    pub def ofMany(size: Int32, goals: Vector[Int32], next: Int32 -> Vector[Int32] \ ef): Vector[Int32] \ ef =
         region rc {
             let dist = Array.repeat(rc, size, -1);
             let front = Array.repeat(rc, size, 0);
             let back = Array.repeat(rc, size, 0);
-            Array.put(0, goal, dist);
-            Array.put(goal, 0, front);
-            walk(dist, front, 1, back, next, 0);
+            let count = goals |> Vector.foldLeft(seeded -> goal ->
+                if (Array.get(goal, dist) < 0) {
+                    Array.put(0, goal, dist);
+                    Array.put(goal, seeded, front);
+                    seeded + 1
+                } else
+                    seeded, 0);
+            walk(dist, front, count, back, next, 0);
             Array.toVector(dist)
         }
 

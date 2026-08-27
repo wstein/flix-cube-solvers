@@ -34,8 +34,10 @@ Early, but the whole path works: stickers in, cubies, table, search, moves out.
 | `CubeSolvers.Rubik.Reduce` | The search into the subgroup no side quarter turn is needed from | Done |
 | `CubeSolvers.Rubik.Finish` | The finish, using only U, D and half turns | Done |
 | `CubeSolvers.Rubik.Engine` | A prepared 3x3 solver; the second `Solver` instance | Done |
-| `CubeSolvers.Revenge.Centers` | The 4x4 centres, in three tabulated stages | Done |
+| `CubeSolvers.Revenge.Centers` | Tsai's first phase: R and L colours onto R and L | Done |
+| `CubeSolvers.Revenge.Separate` | Tsai's second phase: the other centres, and where R/L may stop | Done |
 | `CubeSolvers.Revenge.Wings` | The 4x4 wings: which stickers are one piece, which pairs share a place | Done |
+| `CubeSolvers.Revenge.Walk` | Walking a phase downhill through its table | Done |
 | — | 4x4 edge pairing, then the 3x3 finish and its parities | **In progress** |
 | — | The 5x5 | Not started |
 
@@ -55,7 +57,7 @@ different levels:
 ## Quick start
 
 ```sh
-./flixw test         # 82 tests, about 16s: the tables are built and checked
+./flixw test         # 87 tests, about 16s: the tables are built and checked
 ./flixw check        # type-check; the fast loop
 ./flixw format       # reformat in place before committing
 ```
@@ -299,35 +301,30 @@ On the one cube checked against min2phase, both return the same eleven moves.
 
 ## The 4x4, so far
 
-A 4x4 is solved by reduction: make it behave like a 3x3, then solve that. The
-centres are the first obstacle, and they are done — in three stages, each with
-a table of exact distances, so each is walked downhill rather than searched:
+Tsai's method, by way of TPR-4x4x4-Solver, which averages 44.39 moves. Two of
+the three phases are built; see [docs/four-by-four.md](docs/four-by-four.md)
+for the whole chain.
 
-| Stage | Arrangements | Deepest | Moves it may use |
-| --- | --- | --- | --- |
-| U and D colours onto U and D | 735,471 | 8 | all 36 |
-| F and B colours onto F and B | 12,870 | 9 | the 24 that keep stage one |
-| right colour on the right face | 343,000 | 11 | the 24 that keep both |
+| Phase | Goal | Moves | States | Deepest |
+| --- | --- | --- | --- | --- |
+| 1 | R and L colours onto R and L | 36 | 735,471 | 8 |
+| 2 | U/D and F/B centres home, R/L left finishable | 28 | 900,900 | 9 |
+| 3 | centres solved and edges paired | 20 | 29,400 and 31M | — |
 
-Every arrangement of every stage is reachable, which is what makes the stages
-complete, and the whole thing is about a megabyte of table.
+Both tables are complete: every state reaches a goal, which is what makes the
+walk down them a solution rather than an attempt. On the three shared 4x4
+vectors the two phases together take 10, 10 and 13 moves.
 
-One finding is worth repeating, because it cost an afternoon: **the first
-stage needs the outer turns as well as the wide ones.** A wide turn is the
-outer layer and the slice beneath it moving together, and with only wide turns
-they can never be separated — the slice alone is `Rw` then `R` undone. Restrict
-the move set that way and the centres reach 2,187 of their 735,471
-arrangements, and the table looks fine while being useless.
+Tsai's second step leaves the R and L centres "in one of 12 positions that can
+be solved in later steps". Twelve is not written down here. An arrangement
+qualifies exactly when the third phase's moves can still carry it home, so it
+is found by walking those moves from solved — and twelve is what comes back,
+which is a pleasant way to be told the reading was right.
 
-The wings are modelled but not yet paired. Which stickers form one piece is
-derived rather than tabulated: two stickers are the same wing when they sit on
-the same cubie, and the geometry already knows where every sticker's cubie is.
-Turning an outer layer never pairs or unpairs anything — both wings of a place
-travel together — so pairing is exactly the work the slices have to do.
-
-Still to come: pairing the 24 wings into 12 places, handing the result to the
-3x3 engine, and the two parities a 4x4 can present that a 3x3 cannot. The
-target for a finished solve is 50 to 60 moves.
+What is not yet built is the third phase, where the edges are paired. It is
+much the largest: 31 million states at two bits each, which is where TPR's
+20MB of tables mostly goes, and which needs a byte-wide table type before it
+can be built at all.
 
 ## Depending on it
 
