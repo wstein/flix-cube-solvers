@@ -6,6 +6,25 @@ mod TestPocketScramble {
     use CubeSolvers.Pocket.Stickers.ofFacelets
     use CubeSolvers.Solver.{defaultOptions, search, Outcome}
 
+    ///
+    /// Every corner must appear exactly once.
+    ///
+    /// The sampler shuffled the wrong seven corners once, dealing the pinned
+    /// one twice and corner seven never. Nothing downstream could decode the
+    /// result, and the scrambler that retried until it could never returned.
+    ///
+    @Test
+    def aSampleDealsEachCornerExactlyOnce(): Unit \ Assert =
+        foreach (seed <- 42i64 :: 1i64 :: 7i64 :: 12345i64 :: 999i64 :: Nil) {
+            let (state, _) = sample(seed);
+            let corners = CubeSolvers.Pocket.permutation(state) |> Vector.toList;
+            Assert.assertEq(expected = 8, List.length(corners));
+            Assert.assertEq(expected = 8, List.length(List.distinct(corners)));
+            Assert.assertEq(expected = List.range(0, 8), List.sort(corners));
+            Assert.assertEq(expected = true,
+                Result.isOk(ofFacelets(CubeSolvers.Pocket.Stickers.toFacelets(state))))
+        }
+
     @Test
     def aSampleKeepsThePinnedCornerAndTwistLaw(): Unit \ Assert =
         let (state, _) = sample(42i64);

@@ -261,13 +261,17 @@ mod CubeSolvers.Revenge.Edges {
     /// 239.5 million states into 31 million, and it is the only reason the
     /// table fits.
     ///
-    pub def classify(): { sym2raw = Vector[Int32], raw2sym = Vector[Int32], classes = Int32 } =
+    pub def classify(): { sym2raw = Vector[Int32], raw2sym = Vector[Int32], selfSymmetry = Vector[Int32], classes = Int32 } =
         region rc {
             let seen = Array.repeat(rc, firstCount(), false);
             let raw2sym = Array.repeat(rc, firstCount(), 0);
             let sym2raw = Array.repeat(rc, firstCount(), 0);
-            let found = fold(rc, seen, raw2sym, sym2raw, 0, 0);
-            { sym2raw = Array.toVector(sym2raw), raw2sym = Array.toVector(raw2sym), classes = found }
+            let selfSymmetry = Array.repeat(rc, firstCount(), 0);
+            let found = fold(rc, seen, raw2sym, sym2raw, selfSymmetry, 0, 0);
+            { sym2raw = Array.toVector(sym2raw),
+              raw2sym = Array.toVector(raw2sym),
+              selfSymmetry = Array.toVector(selfSymmetry),
+              classes = found }
         }
 
     ///
@@ -278,17 +282,18 @@ mod CubeSolvers.Revenge.Edges {
         seen: Array[Bool, r],
         raw2sym: Array[Int32, r],
         sym2raw: Array[Int32, r],
+        selfSymmetry: Array[Int32, r],
         i: Int32,
         count: Int32
     ): Int32 \ r =
         if (i >= firstCount())
             count
         else if (Array.get(i, seen))
-            fold(rc, seen, raw2sym, sym2raw, i + 1, count)
+            fold(rc, seen, raw2sym, sym2raw, selfSymmetry, i + 1, count)
         else {
             Array.put(i, count, sym2raw);
-            claim(seen, raw2sym, unrank(i * rawCount()), 0, count);
-            fold(rc, seen, raw2sym, sym2raw, i + 1, count + 1)
+            claim(seen, raw2sym, selfSymmetry, unrank(i * rawCount()), 0, count, i);
+            fold(rc, seen, raw2sym, sym2raw, selfSymmetry, i + 1, count + 1)
         }
 
     ///
@@ -297,18 +302,95 @@ mod CubeSolvers.Revenge.Edges {
     def claim(
         seen: Array[Bool, r],
         raw2sym: Array[Int32, r],
+        selfSymmetry: Array[Int32, r],
         s: State,
         j: Int32,
-        count: Int32
+        count: Int32,
+        representative: Int32
     ): Unit \ r =
         if (j >= 8)
             ()
         else
             let idx = rank(s, 4);
+            // A rotation that sends the class back to itself: the table build
+            // uses these to fill several entries from one expansion.
+            if (idx == representative)
+                Array.put(Int32.bitwiseOr(Array.get(count, selfSymmetry), Int32.leftShift(1, j)), count, selfSymmetry)
+            else
+                ();
             Array.put(true, idx, seen);
             Array.put(count * 8 + Vector.get(j, symmetryInverse()), idx, raw2sym);
             let turnedOnce = rot(s, 0);
             let next = if (j `Int32.modulo` 2 == 1) rot(rot(turnedOnce, 1), 2) else turnedOnce;
-            claim(seen, raw2sym, next, j + 1, count)
+            claim(seen, raw2sym, selfSymmetry, next, j + 1, count, representative)
+
+    ///
+    /// How many of the phase's moves the edge coordinate needs.
+    ///
+    /// Seventeen of the twenty: the coordinate cannot tell the last three
+    /// apart from moves it already has.
+    ///
+    pub def edgeMoves(): Int32 = 17
+
+    ///
+    /// The state's second permutation, inverted -- what `standard` composes
+    /// with.
+    ///
+    pub def backward(s: State): Vector[Int32] =
+        region rc {
+            let back = Array.repeat(rc, 12, 0);
+            foreach (i <- List.range(0, 12))
+                Array.put(i, Vector.get(i, s#turned), back);
+            Array.toVector(back)
+        }
+
+    ///
+    /// Each move followed by each rotation, as a pair of permutations.
+    ///
+    /// A hundred and sixty of each, indexed `move * 8 + rotation`. Having
+    /// them lets a state be moved, rotated and ranked in one pass, which is
+    /// what the table build does thirty-one million times over.
+    ///
+    pub def moveRotations(): { forward = Vector[Vector[Int32]], back = Vector[Vector[Int32]] } =
+        let pairs = List.range(0, 20) |> List.flatMap(m ->
+            List.range(0, 8) |> List.map(r ->
+                let turned = rotate(move(solved(), m), r);
+                (turned#edge, backward(turned))));
+        { forward = pairs |> List.map(fst) |> List.toVector,
+          back = pairs |> List.map(snd) |> List.toVector }
+
+    ///
+    /// The rank of the first `end` places after a move and rotation, without
+    /// building the state it would give.
+    ///
+    pub def rankThrough(
+        tables: { forward = Vector[Vector[Int32]], back = Vector[Vector[Int32]] },
+        which: Int32,
+        edge: Vector[Int32],
+        end: Int32
+    ): Int32 =
+        let forward = Vector.get(which, tables#forward);
+        let back = Vector.get(which, tables#back);
+        through(forward, back, edge, end, 0, 0, 0xba9876543210i64)
+
+    ///
+    /// Adds one digit, reading the place the move and rotation send it to.
+    ///
+    def through(
+        forward: Vector[Int32],
+        back: Vector[Int32],
+        edge: Vector[Int32],
+        end: Int32,
+        i: Int32,
+        idx: Int32,
+        val: Int64
+    ): Int32 =
+        if (i >= end)
+            idx
+        else
+            let place = Vector.get(Vector.get(Vector.get(i, forward), edge), back);
+            let v = place * 4;
+            let digit = Int64.tryToInt32(Int64.bitwiseAnd(Int64.rightShift(val, v), 15i64)) |> Option.getWithDefault(0);
+            through(forward, back, edge, end, i + 1, idx * (12 - i) + digit, val - Int64.leftShift(0x111111111110i64, v))
 
 }
