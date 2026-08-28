@@ -650,8 +650,8 @@ mod CubeSolvers.Revenge.Edges {
     /// point of the fold, and getting it wrong would index a table of the
     /// right size with the wrong number.
     ///
-    /// Used once per solve, so it may allocate; the transitions inside the
-    /// search use `after`, which does not.
+    /// Kept as the allocating reference implementation for tests and table
+    /// tooling. The phase-three search uses `indexOfPermutation` instead.
     ///
     pub def indexOf(
         classes: { sym2raw = Vector[Int32], raw2sym = Vector[Int32], selfSymmetry = Vector[Int32], classes = Int32 },

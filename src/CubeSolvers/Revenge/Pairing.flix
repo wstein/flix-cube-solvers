@@ -133,39 +133,22 @@ mod CubeSolvers.Revenge.Pairing {
             walk(t, centre, pairing, edgeDepth, depth, -1))
 
     ///
-    /// The pairing, as the edge table indexes it.
+    /// The pairing, as the edge table indexes it, without allocating a state
+    /// for the symmetry rotation.
     ///
     def edgeIndexOf(t: Tables[r], pairing: Vector[Int32]): Int32 =
         Edges.indexOfPermutation(t#classes, t#symmetries, pairing)
 
     ///
     /// Depth-first to exactly `depth` moves, pruned by both tables.
-    ///
-    /// Depth-first to exactly `depth` moves, pruned by both tables.
-    ///
-    /// The edge index is read from the cube at every node rather than carried
-    /// along. Carrying it is faster and wrong: a move sends the pairing to
-    /// `b . std . a`, a conjugation, so a carried index tracks the pairing in
-    /// a frame that the moves themselves are turning. The two agree when the
-    /// cube is paired and disagree in between, which is exactly the shape of
-    /// bug that returns a confident wrong answer.
-    /// The index and its distance are carried for speed, but the goal is
-    /// asked of the cube.
-    ///
-    /// A move conjugates the pairing permutation, so a carried index tracks
-    /// it in a frame the moves are turning: near enough to prune with, not
-    /// near enough to finish on. Asking the cube whether it is paired costs
-    /// two dozen lookups; indexing the table afresh at every node costs a
-    /// ranking and a rotation, and walking the two-bit table for a distance
-    /// costs a few hundred transitions.
     /// Everything is carried in coordinates. Turning ninety-six stickers at
     /// every node, and reading a coordinate off them, costs twenty times what
     /// a table lookup does -- and this phase reaches thirteen moves deep.
     /// Nothing is turned. The centres travel as a coordinate, exact because
     /// their slots do not move with the cube; the pairing travels as itself,
     /// each move sending it to `b . R . a`. So the pairing stays absolute --
-    /// `R` being the identity is the goal -- and a node costs lookups rather
-    /// than ninety-six stickers.
+    /// `R` being the identity is the goal. The edge bound is ranked through
+    /// precomputed symmetry maps, rather than by allocating a rotated state.
     def walk(
         t: Tables[r],
         centre: Int32,
