@@ -137,4 +137,77 @@ mod CubeSolvers.Revenge.Pairs {
     ///
     pub def isPaired(cube: Facelets): Bool = relative(cube) == Vector.range(0, 12)
 
+    ///
+    /// The reference's twelve places, as the colours they show.
+    ///
+    /// From `EdgeColor` in TPR-4x4x4-Solver, with faces numbered as this
+    /// package numbers them -- U, R, F, D, L, B -- which is the order its own
+    /// `"URFDLB"` lookup uses.
+    ///
+    def referenceColours(): Vector[(Int32, Int32)] =
+        Vector#{(2, 0), (4, 0), (5, 0), (1, 0), (5, 3), (4, 3), (2, 3), (1, 3), (2, 4), (5, 4), (5, 1), (2, 1)}
+
+    ///
+    /// How the reference renumbers those places again for its edge tables.
+    ///
+    /// `Edge3.set` reads its cube through `FullEdgeMap`, so its places are not
+    /// the colour-pair places. Missing this step is what left four of twenty
+    /// moves disagreeing, with everything else looking right.
+    ///
+    def edgeRenumbering(): Vector[Int32] = Vector#{0, 2, 4, 6, 1, 3, 7, 5, 8, 9, 10, 11}
+
+    ///
+    /// This package's places, in the numbering the edge tables use.
+    ///
+    /// Derived rather than written down: match each place to the reference's
+    /// by the colours it shows when solved, then follow its renumbering. The
+    /// answer is checked against all twenty of the phase's moves, which is
+    /// the only check that means anything -- the fourteen outer moves agree
+    /// under any numbering at all, because they move whole pairs and leave
+    /// the pairing alone.
+    ///
+    pub def placeCorrespondence(): Vector[Int32] =
+        let cube = CubeSolvers.Solver.solved(Kind.Cube4x4);
+        let stickers = CubeSolvers.Solver.stickersOf(cube);
+        let pieces = CubeSolvers.Revenge.Wings.pieces();
+        let theirs = referenceColours() |> Vector.map(ordered);
+        let renumbering = invert(edgeRenumbering());
+        sides() |> Vector.map(match (low, _) ->
+            let (a, b) = Vector.get(low, pieces);
+            let shown = ordered((faceNumber(Vector.get(a, stickers)), faceNumber(Vector.get(b, stickers))));
+            match Vector.indexOf(shown, theirs) {
+                case Some(i) => Vector.get(i, renumbering)
+                case None    => -1
+            })
+
+    ///
+    /// A colour pair, smaller first.
+    ///
+    def ordered(p: (Int32, Int32)): (Int32, Int32) =
+        let (a, b) = p;
+        if (a < b) (a, b) else (b, a)
+
+    ///
+    /// Which face a colour is, as a number.
+    ///
+    def faceNumber(f: CubeSolvers.Face): Int32 = match f {
+        case CubeSolvers.Face.U => 0
+        case CubeSolvers.Face.R => 1
+        case CubeSolvers.Face.F => 2
+        case CubeSolvers.Face.D => 3
+        case CubeSolvers.Face.L => 4
+        case _                  => 5
+    }
+
+    ///
+    /// The cube's pairing, in the numbering the edge tables use.
+    ///
+    pub def asEdgeState(cube: Facelets): CubeSolvers.Revenge.Edges.State =
+        let tau = placeCorrespondence();
+        let back = invert(tau);
+        let mine = relative(cube);
+        { edge = Vector.range(0, 12) |> Vector.map(theirs ->
+            Vector.get(Vector.get(Vector.get(theirs, back), mine), tau)),
+          turned = Vector.range(0, 12) }
+
 }

@@ -113,6 +113,31 @@ Two consequences, both found the hard way:
   enumerate them, keep those that separate the wings, and try each. The
   downhill walk that serves phases 1 and 2 is not enough on its own.
 
+## Joining the two numberings
+
+The ported edge tables number the twelve places their own way, and this
+package numbers them geometrically. Getting a cube into the tables means
+knowing the correspondence, and it took two steps and one false start.
+
+The false start is worth recording. Comparing the two numberings move by
+move reported fourteen of twenty agreeing, which looked like near
+confirmation. It was worthless: fourteen of the phase's moves are outer
+turns, which move both wings of a place together and therefore leave the
+pairing permutation alone. They agree under *any* numbering. Only the six
+wide turns carry information, and none of them agreed.
+
+The correspondence itself is two maps composed:
+
+1. Match each place to the reference's by the colours it shows when solved.
+   Its `EdgeColor` names the twelve places that way, and its faces are
+   numbered as this package numbers them.
+2. Follow `FullEdgeMap`. `Edge3.set` reads its cube through that map, so its
+   places are not the colour-pair places. Missing this step is what left four
+   of twenty moves disagreeing while everything else looked right.
+
+`Pairs.placeCorrespondence` derives it and `Pairs.asEdgeState` applies it.
+All twenty moves agree, which is asserted rather than assumed.
+
 ## What is next
 
 1. Enumerate phase-2 solutions rather than walking one, and keep those that
