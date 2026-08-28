@@ -138,6 +138,37 @@ The correspondence itself is two maps composed:
 `Pairs.placeCorrespondence` derives it and `Pairs.asEdgeState` applies it.
 All twenty moves agree, which is asserted rather than assumed.
 
+## The search, and where it stands
+
+`CubeSolvers.Revenge.Pairing` holds the third phase's search: both tables,
+the twenty moves in the order the edge tables number them, the walk down the
+two-bit table to recover a true distance, and an iterative-deepening search
+bounded by the larger of the two.
+
+It does not work yet, and the fault is known and reproducible.
+
+Tracking the edge index incrementally through a walk of 120 moves, and
+recomputing it from the cube at each step, the two agree until **step five,
+move ten** -- which is `L2`, an outer turn. An outer turn moves both wings of
+a place together and therefore leaves the pairing permutation alone, so
+`Edges.after` must return the index unchanged for it. It does not.
+
+The false comfort to avoid here, for the third time in this work: testing
+transitions *from solved* proves nothing about outer moves, because they act
+trivially there on both sides. Only a walk that has already left the solved
+state can tell.
+
+What the search does get right, on cubes scrambled within the phase: the
+centres come out solved every time. It is the edge half that goes wrong, and
+the reported solutions leave the pairing incomplete -- 9 of 12, 7 of 12 --
+while the search believes it has finished.
+
+So the next step is to find why `after` disagrees with recomputation for an
+outer turn from a non-identity state. The suspects, in order: `moveRotations`
+composing the move and rotation tables differently from the reference's
+`initMvrot`, and `rankThroughArray` reading `forward` and `back` in the wrong
+order.
+
 ## What is next
 
 1. Enumerate phase-2 solutions rather than walking one, and keep those that

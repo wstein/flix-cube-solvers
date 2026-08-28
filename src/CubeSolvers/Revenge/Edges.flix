@@ -581,6 +581,65 @@ mod CubeSolvers.Revenge.Edges {
         step(table, scratch, classes, tables, 0, next, filled)
 
     ///
+    /// Where move `m` sends the state at `index`.
+    ///
+    /// The whole transition: unrank the state, rank it again through the
+    /// move, canonicalise the first coordinate by symmetry, and carry the
+    /// second through the same symmetry. `scratch` is the caller's, so this
+    /// allocates nothing.
+    ///
+    pub def after(
+        classes: { sym2raw = Vector[Int32], raw2sym = Vector[Int32], selfSymmetry = Vector[Int32], classes = Int32 },
+        tables: { forward = Vector[Vector[Int32]], back = Vector[Vector[Int32]] },
+        scratch: Array[Int32, r],
+        index: Int32,
+        m: Int32
+    ): Int32 \ r =
+        let first = Vector.get(index / rawCount(), classes#sym2raw);
+        unrankInto(scratch, first * rawCount() + (index `Int32.modulo` rawCount()));
+        moved(classes, tables, scratch, m)
+
+    ///
+    /// The index after a move, for a state already unranked into `scratch`.
+    ///
+    def moved(
+        classes: { sym2raw = Vector[Int32], raw2sym = Vector[Int32], selfSymmetry = Vector[Int32], classes = Int32 },
+        tables: { forward = Vector[Vector[Int32]], back = Vector[Vector[Int32]] },
+        scratch: Array[Int32, r],
+        m: Int32
+    ): Int32 \ r =
+        let plain = m * 8;
+        let movedFirst = rankThroughArray(
+            Vector.get(plain, tables#forward), Vector.get(plain, tables#back), scratch, 4);
+        let packed = Vector.get(movedFirst, classes#raw2sym);
+        let symmetry = packed `Int32.modulo` 8;
+        let withSymmetry = plain + symmetry;
+        let movedRest = rankThroughArray(
+            Vector.get(withSymmetry, tables#forward),
+            Vector.get(withSymmetry, tables#back), scratch, 10) `Int32.modulo` rawCount();
+        (packed / 8) * rawCount() + movedRest
+
+    ///
+    /// Where a pairing sits in the table.
+    ///
+    /// The first coordinate is canonicalised by symmetry, and the same
+    /// symmetry is then applied to the second -- that coupling is the whole
+    /// point of the fold, and getting it wrong would index a table of the
+    /// right size with the wrong number.
+    ///
+    /// Used once per solve, so it may allocate; the transitions inside the
+    /// search use `after`, which does not.
+    ///
+    pub def indexOf(
+        classes: { sym2raw = Vector[Int32], raw2sym = Vector[Int32], selfSymmetry = Vector[Int32], classes = Int32 },
+        state: State
+    ): Int32 =
+        let packed = Vector.get(rank(state, 4), classes#raw2sym);
+        let symmetry = packed `Int32.modulo` 8;
+        let rest = rank(rotate(state, symmetry), 10) `Int32.modulo` rawCount();
+        (packed / 8) * rawCount() + rest
+
+    ///
     /// Tries each of the phase's moves from the state in `scratch`.
     ///
     def step(
@@ -595,16 +654,7 @@ mod CubeSolvers.Revenge.Edges {
         if (m >= edgeMoves())
             filled
         else
-            let plain = m * 8;
-            let movedFirst = rankThroughArray(
-                Vector.get(plain, tables#forward), Vector.get(plain, tables#back), scratch, 4);
-            let packed = Vector.get(movedFirst, classes#raw2sym);
-            let symmetry = packed `Int32.modulo` 8;
-            let withSymmetry = plain + symmetry;
-            let movedRest = rankThroughArray(
-                Vector.get(withSymmetry, tables#forward),
-                Vector.get(withSymmetry, tables#back), scratch, 10) `Int32.modulo` rawCount();
-            let idx = (packed / 8) * rawCount() + movedRest;
+            let idx = moved(classes, tables, scratch, m);
             let after =
                 if (get(table, idx) == 3) {
                     put(table, idx, next);
