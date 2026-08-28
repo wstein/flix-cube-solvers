@@ -53,7 +53,7 @@ mod TestPocketScramble {
     @Test
     def requestedDifficultyIsTheProvenMinimum(): Unit \ Assert =
         let engine = standard();
-        let (scramble, _) = atDistance(42i64, 3);
+        let (scramble, _) = atDistance(42i64, 3) |> Result.getWithDefault((Nil, 0i64));
         Assert.assertEq(expected = 3, List.length(scramble));
         match replay(solved(), scramble) {
             case None => Assert.assertEq(expected = "a state", "none")
@@ -65,7 +65,7 @@ mod TestPocketScramble {
 
     @Test
     def easyOnlyReturnsThreeToFiveMoveScrambles(): Unit \ Assert =
-        let (scramble, _) = easy(42i64);
+        let (scramble, _) = easy(42i64) |> Result.getWithDefault((Nil, 0i64));
         Assert.assertEq(expected = true, List.length(scramble) >= 3 and List.length(scramble) <= 5)
 
     @Test

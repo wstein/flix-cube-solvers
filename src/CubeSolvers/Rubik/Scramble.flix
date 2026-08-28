@@ -29,11 +29,11 @@ mod CubeSolvers.Rubik.Scramble {
     /// for 3x3 competition practice. It is not an official WCA program:
     /// official competitions must use the current TNoodle.
     ///
-    pub def secure(engine: Engine): MoveSequence \ IO =
+    pub def secure(engine: Engine): Result[String, MoveSequence] \ IO =
         let state = secureState();
         match solution(engine, state, defaultBound()) {
-            case Some(home) => CubeSolvers.inverse(home)
-            case None       => Nil
+            case Some(home) => Ok(CubeSolvers.inverse(home))
+            case None       => Err("the engine could not solve a state it sampled")
         }
 
     ///
@@ -47,35 +47,44 @@ mod CubeSolvers.Rubik.Scramble {
         table: CubeSolvers.Rubik.Easy.Table,
         seed: Int64,
         distance: Int32
-    ): (MoveSequence, Int64) =
+    ): Result[String, (MoveSequence, Int64)] =
         let choices = CubeSolvers.Rubik.Easy.layer(table, distance);
-        let (index, next) = draw(seed, Vector.length(choices));
-        let state = CubeSolvers.Rubik.Easy.stateOf(Vector.get(index, choices));
-        match CubeSolvers.Rubik.Easy.descend(table, state) {
-            case Some(home) => (CubeSolvers.inverse(home), next)
-            case None       => (Nil, next)
-        }
+        if (Vector.isEmpty(choices))
+            Err("the table holds no states exactly ${distance} moves from solved")
+        else
+            let (index, next) = draw(seed, Vector.length(choices));
+            let state = CubeSolvers.Rubik.Easy.stateOf(Vector.get(index, choices));
+            match CubeSolvers.Rubik.Easy.descend(table, state) {
+                case Some(home) => Ok((CubeSolvers.inverse(home), next))
+                case None       => Err("the table reached a state it cannot walk home")
+            }
 
     ///
     /// A seeded easy scramble, choosing an exact distance of 3, 4, or 5 with
     /// equal probability, then a state uniformly from that layer.
     ///
-    pub def easy(table: CubeSolvers.Rubik.Easy.Table, seed: Int64): (MoveSequence, Int64) =
+    pub def easy(table: CubeSolvers.Rubik.Easy.Table, seed: Int64): Result[String, (MoveSequence, Int64)] =
         let (offset, next) = draw(seed, 3);
         atDistance(table, next, offset + 3)
 
     /// A cryptographically-random scramble at one exact shallow distance.
-    pub def secureAtDistance(table: CubeSolvers.Rubik.Easy.Table, distance: Int32): MoveSequence \ IO =
-        let random = new SecureRandom();
+    pub def secureAtDistance(
+        table: CubeSolvers.Rubik.Easy.Table,
+        distance: Int32
+    ): Result[String, MoveSequence] \ IO =
         let choices = CubeSolvers.Rubik.Easy.layer(table, distance);
-        let state = CubeSolvers.Rubik.Easy.stateOf(Vector.get(random.nextInt(Vector.length(choices)), choices));
-        match CubeSolvers.Rubik.Easy.descend(table, state) {
-            case Some(home) => CubeSolvers.inverse(home)
-            case None       => Nil
-        }
+        if (Vector.isEmpty(choices))
+            Err("the table holds no states exactly ${distance} moves from solved")
+        else
+            let random = new SecureRandom();
+            let state = CubeSolvers.Rubik.Easy.stateOf(Vector.get(random.nextInt(Vector.length(choices)), choices));
+            match CubeSolvers.Rubik.Easy.descend(table, state) {
+                case Some(home) => Ok(CubeSolvers.inverse(home))
+                case None       => Err("the table reached a state it cannot walk home")
+            }
 
     /// A cryptographically-random easy scramble at exactly 3, 4, or 5 moves.
-    pub def secureEasy(table: CubeSolvers.Rubik.Easy.Table): MoveSequence \ IO =
+    pub def secureEasy(table: CubeSolvers.Rubik.Easy.Table): Result[String, MoveSequence] \ IO =
         let random = new SecureRandom();
         secureAtDistance(table, random.nextInt(3) + 3)
 

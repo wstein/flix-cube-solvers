@@ -28,8 +28,19 @@ mod CubeSolvers.Rubik.Easy {
     /// The known number of states through the fifth layer, including solved.
     def capacity(): Int32 = 621649
 
-    /// An exact distance table through `depth`, where `0 <= depth <= 5`.
-    pub def prepared(depth: Int32): Table =
+    /// An exact distance table through `depth`, or a reason there is none.
+    ///
+    /// The frontier arrays are sized for the fifth layer exactly, so a deeper
+    /// request would run off the end of them. Refusing it is the difference
+    /// between an error and a corrupted table.
+    pub def prepared(depth: Int32): Result[String, Table] =
+        if (depth < 0 or depth > maximumDepth())
+            Err("A table reaches 0 to ${maximumDepth()} moves, not ${depth}")
+        else
+            Ok(build(depth))
+
+    /// The table, once the depth is known to be within reach.
+    def build(depth: Int32): Table =
         region rc {
             let known = MutMap.empty(rc);
             let front = Array.repeat(rc, capacity(), solved());
@@ -42,7 +53,7 @@ mod CubeSolvers.Rubik.Easy {
         }
 
     /// The standard table, complete through five moves.
-    pub def standard(): Table = prepared(maximumDepth())
+    pub def standard(): Table = build(maximumDepth())
 
     /// The compact key for a cubie state.
     pub def key(state: State): Key =
@@ -64,10 +75,16 @@ mod CubeSolvers.Rubik.Easy {
         let Table.Table(distances, _) = table;
         Map.get(key(state), distances)
 
-    /// Every state at the requested exact distance.
+    /// Every state at the requested exact distance, empty beyond the table.
+    ///
+    /// Total on purpose: a caller asking for a layer the table does not hold
+    /// gets nothing rather than an index out of bounds.
     pub def layer(table: Table, distance: Int32): Vector[Key] =
         let Table.Table(_, layers) = table;
-        Vector.get(distance, layers)
+        if (distance < 0 or distance >= Vector.length(layers))
+            Vector.empty()
+        else
+            Vector.get(distance, layers)
 
     /// A shortest route home for a state the table reaches.
     pub def descend(table: Table, state: State): Option[MoveSequence] =

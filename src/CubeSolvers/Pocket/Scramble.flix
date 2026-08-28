@@ -57,15 +57,18 @@ mod CubeSolvers.Pocket.Scramble {
     /// merely the number of moves printed. Values from 0 through 11 are
     /// meaningful for the pocket cube; callers should use that range.
     ///
-    pub def atDistance(seed: Int64, distance: Int32): (MoveSequence, Int64) =
+    pub def atDistance(seed: Int64, distance: Int32): Result[String, (MoveSequence, Int64)] =
         let table = CubeSolvers.Pocket.Search.table(distance);
         let states = statesAt(table, distance);
-        let (at, next) = draw(seed, List.length(states));
-        let state = stateAt(states, at);
-        match CubeSolvers.Pocket.Search.descend(table, state) {
-            case Some(home) => (CubeSolvers.inverse(home), next)
-            case None       => (Nil, next)
-        }
+        if (List.isEmpty(states))
+            Err("no pocket cube state is exactly ${distance} moves from solved")
+        else
+            let (at, next) = draw(seed, List.length(states));
+            let state = stateAt(states, at);
+            match CubeSolvers.Pocket.Search.descend(table, state) {
+                case Some(home) => Ok((CubeSolvers.inverse(home), next))
+                case None       => Err("the table reached a state it cannot walk home")
+            }
 
     ///
     /// An easy practice scramble, uniformly choosing one certified distance
@@ -73,7 +76,7 @@ mod CubeSolvers.Pocket.Scramble {
     ///
     /// Unlike `wca`, this deliberately is not a competition distribution.
     ///
-    pub def easy(seed: Int64): (MoveSequence, Int64) =
+    pub def easy(seed: Int64): Result[String, (MoveSequence, Int64)] =
         let (offset, next) = draw(seed, 3);
         atDistance(next, offset + 3)
 
