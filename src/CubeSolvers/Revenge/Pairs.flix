@@ -305,7 +305,7 @@ mod CubeSolvers.Revenge.Pairs {
     /// search then costs two dozen lookups a node rather than ninety-six
     /// stickers turned.
     ///
-    pub def orbitMaps(): Vector[{ low = Vector[Int32], high = Vector[Int32] }] =
+    pub def orbitMaps(): Vector[{ lowInverse = Vector[Int32], high = Vector[Int32] }] =
         let l = layout();
         let pieces = CubeSolvers.Revenge.Wings.pieces();
         let firstOf = pieces |> Vector.mapWithIndex(i -> match (a, _) -> (a, i)) |> Vector.toList |> List.toMap;
@@ -313,7 +313,7 @@ mod CubeSolvers.Revenge.Pairs {
         let placeOfHigh = placeIndex(l#sides, snd);
         CubeSolvers.Revenge.Pairing.moves() |> Vector.map(m ->
             match CubeSolvers.Turning.permutation(Kind.Cube4x4, m) {
-                case Err(_)   => { low = Vector.range(0, 12), high = Vector.range(0, 12) }
+                case Err(_)   => { lowInverse = Vector.range(0, 12), high = Vector.range(0, 12) }
                 case Ok(perm) =>
                     let landed = wing -> {
                         let (a, b) = Vector.get(wing, pieces);
@@ -323,8 +323,9 @@ mod CubeSolvers.Revenge.Pairs {
                             case _            => -1
                         }
                     };
-                    { low = l#sides |> Vector.map(match (x, _) ->
-                        Map.getWithDefault(landed(x), -1, placeOfLow)),
+                    let low = l#sides |> Vector.map(match (x, _) ->
+                        Map.getWithDefault(landed(x), -1, placeOfLow));
+                    { lowInverse = invert(low),
                       high = l#sides |> Vector.map(match (_, y) ->
                         Map.getWithDefault(landed(y), -1, placeOfHigh)) }
             })
@@ -338,9 +339,8 @@ mod CubeSolvers.Revenge.Pairs {
     ///
     /// The pairing after a move, from the pairing before it.
     ///
-    pub def turnedBy(maps: { low = Vector[Int32], high = Vector[Int32] }, r: Vector[Int32]): Vector[Int32] =
-        let back = invert(maps#low);
+    pub def turnedBy(maps: { lowInverse = Vector[Int32], high = Vector[Int32] }, r: Vector[Int32]): Vector[Int32] =
         Vector.range(0, 12) |> Vector.map(p ->
-            Vector.get(Vector.get(Vector.get(p, back), r), maps#high))
+            Vector.get(Vector.get(Vector.get(p, maps#lowInverse), r), maps#high))
 
 }

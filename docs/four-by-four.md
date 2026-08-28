@@ -188,7 +188,7 @@ distance for a real candidate is eleven, and the answers are around thirteen;
 the search finds nothing at twelve in about a second per candidate, and does
 not finish at thirteen.
 
-The cost is per node, and the reason is the frame:
+The cost is per node, and the reason was the frame:
 
 - The **centres** can be carried as a coordinate. Their slots do not move with
   the cube, so `Reduce.after` is exact.
@@ -198,11 +198,20 @@ The cost is per node, and the reason is the frame:
   nothing at any depth. Reading the pairing from the cube each node is
   correct, and costs ninety-six stickers turned plus a ranking.
 
-The fix is to carry the pairing itself rather than the cube or the index.
+The search now carries the pairing itself rather than the cube or the index.
 Every move acts on it as `R -> b . R . a`, where `a` and `b` are that move's
-permutations of the two wing orbits, both derivable once. Then a node costs
-two dozen lookups, the pairing stays absolute so `R = identity` is the goal,
-and the table is consulted only for the bound. That is the last piece.
+permutations of the two wing orbits, both derived once. The inverse of `a` is
+cached with each move, so a transition is twelve lookups and the pairing stays
+absolute: `R = identity` is the goal.
+
+The edge-table lookup is also direct. The table folds eight cube symmetries,
+but rotating a standard pairing is fixed left/right composition on its twelve
+entries. The search ranks that composition through precomputed maps rather
+than allocating and rotating an `Edges.State` at every child. The direct path
+is checked against the original State-based indexing across all 11,880 first
+coordinate arrangements. This removes the known allocation bottleneck; a
+real-cube depth-13 timing remains the acceptance measurement for the complete
+4x4 solver.
 
 ## What is next
 

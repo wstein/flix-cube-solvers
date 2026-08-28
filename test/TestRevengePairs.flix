@@ -72,6 +72,25 @@ mod TestRevengePairs {
         }
 
     ///
+    /// The cached orbit maps are the third phase's coordinate transition.
+    /// Check every move against independently reading the resulting cube so
+    /// the search cannot silently return to the old moving-frame error.
+    ///
+    @Test
+    def orbitMapsCarryTheAbsolutePairing(): Unit \ Assert =
+        let cube = CubeSolvers.Solver.solved(Kind.Cube4x4);
+        let maps = CubeSolvers.Revenge.Pairs.orbitMaps();
+        let before = relative(cube);
+        foreach ((i, m) <- List.mapWithIndex(i -> m -> (i, m), referenceOrder())) {
+            match CubeSolvers.Turning.apply(cube, m) {
+                case Err(_) => Assert.assertEq(expected = "a turn", "refused")
+                case Ok(after) => Assert.assertEq(
+                    expected = relative(after),
+                    CubeSolvers.Revenge.Pairs.turnedBy(Vector.get(i, maps), before))
+            }
+        }
+
+    ///
     /// The two numberings agree on every move of the phase.
     ///
     /// This is the only check worth making. Fourteen of the twenty moves are

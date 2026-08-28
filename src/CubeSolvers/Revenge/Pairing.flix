@@ -24,6 +24,7 @@ mod CubeSolvers.Revenge.Pairing {
         edges = Array[Int32, r],
         classes = { sym2raw = Vector[Int32], raw2sym = Vector[Int32], selfSymmetry = Vector[Int32], classes = Int32 },
         rotations = { forward = Vector[Vector[Int32]], back = Vector[Vector[Int32]] },
+        symmetries = { forward = Vector[Vector[Int32]], back = Vector[Vector[Int32]] },
         scratch = Array[Int32, r],
         layout = CubeSolvers.Revenge.Pairs.Layout,
         centreSteps = {
@@ -33,7 +34,7 @@ mod CubeSolvers.Revenge.Pairing {
             flips = Vector[Int32]
         },
         binomials = Vector[Vector[Int32]],
-        orbits = Vector[{ low = Vector[Int32], high = Vector[Int32] }]
+        orbits = Vector[{ lowInverse = Vector[Int32], high = Vector[Int32] }]
     }
 
     ///
@@ -71,6 +72,7 @@ mod CubeSolvers.Revenge.Pairing {
           edges = built#table,
           classes = Edges.classify(),
           rotations = Edges.moveRotations(),
+          symmetries = Edges.rotationTables(),
           scratch = Array.repeat(rc, 12, 0),
           layout = CubeSolvers.Revenge.Pairs.layout(),
           centreSteps = Reduce.stepsFor(moves()),
@@ -134,11 +136,7 @@ mod CubeSolvers.Revenge.Pairing {
     /// The pairing, as the edge table indexes it.
     ///
     def edgeIndexOf(t: Tables[r], pairing: Vector[Int32]): Int32 =
-        let l = t#layout;
-        Edges.indexOf(t#classes,
-            { edge = Vector.range(0, 12) |> Vector.map(theirs ->
-                Vector.get(Vector.get(Vector.get(theirs, l#back), pairing), l#correspondence)),
-              turned = Vector.range(0, 12) })
+        Edges.indexOfPermutation(t#classes, t#symmetries, pairing)
 
     ///
     /// Depth-first to exactly `depth` moves, pruned by both tables.
