@@ -56,4 +56,48 @@ mod TestRevengeEdges {
         Assert.assertEq(expected = 0, Vector.get(0, found#sym2raw));
         Assert.assertEq(expected = 0, Vector.get(0, found#raw2sym) / 8)
 
+    ///
+    /// The packed table holds two bits per state, and reading back what was
+    /// written is the whole contract.
+    ///
+    @Test
+    def twoBitEntriesSurviveBeingWritten(): Unit \ Assert =
+        region rc {
+            let table = Array.repeat(rc, 4, -1);
+            // Every slot starts unwritten, which is the value three.
+            foreach (i <- List.range(0, 64))
+                Assert.assertEq(expected = 3, CubeSolvers.Revenge.Edges.get(table, i));
+            foreach ((i, v) <- (0, 0) :: (1, 2) :: (15, 1) :: (16, 0) :: (63, 2) :: Nil) {
+                CubeSolvers.Revenge.Edges.put(table, i, v);
+                Assert.assertEq(expected = v, CubeSolvers.Revenge.Edges.get(table, i))
+            };
+            // Writing one slot must leave its neighbours alone.
+            Assert.assertEq(expected = 3, CubeSolvers.Revenge.Edges.get(table, 2));
+            Assert.assertEq(expected = 3, CubeSolvers.Revenge.Edges.get(table, 14))
+        }
+
+    @Test
+    def theTableIsAsBigAsTheTwoCoordinatesTogether(): Unit \ Assert =
+        Assert.assertEq(expected = 31006080, CubeSolvers.Revenge.Edges.pruningSize());
+        Assert.assertEq(expected = classCount() * rawCount(), CubeSolvers.Revenge.Edges.pruningSize())
+
+    ///
+    /// The first few rings of the table, which cost a moment rather than the
+    /// eighty seconds the whole thing takes.
+    ///
+    /// Filling the table completely is a build step, not a test: 31,006,080
+    /// entries take about 79s here. What is checked here is that the sweep
+    /// starts correctly and grows at the rate it grew when the full table was
+    /// verified.
+    ///
+    @Test
+    def theSweepFillsTheFirstRingsAtTheKnownRate(): Unit \ Assert =
+        region rc {
+            let shallow = CubeSolvers.Revenge.Edges.pruning(rc, 5);
+            Assert.assertEq(expected = 1496, shallow#filled);
+            Assert.assertEq(expected = 5, shallow#depth);
+            // The solved state is the one the sweep starts from.
+            Assert.assertEq(expected = 0, CubeSolvers.Revenge.Edges.get(shallow#table, 0))
+        }
+
 }

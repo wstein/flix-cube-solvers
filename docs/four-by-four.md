@@ -138,9 +138,22 @@ Two consequences, both found the hard way:
    1.9GB, and the build is 4.8 billion transitions -- half an hour at the
    rate measured here.
 
-   So this needs what TPR uses: eight symmetries folding 239.5M to 31M. That
-   is the single largest remaining piece of work, and there is no shortcut
-   around it.
+   So this needs what TPR uses: eight symmetries folding 239.5M to 31M.
+
+   **Built.** `CubeSolvers.Revenge.Edges` carries the state, its twenty
+   moves, the three rotations, the ranking, the symmetry fold and the table.
+   The fold gives 1,538 classes, which is the reference's figure. The table
+   fills all 31,006,080 entries, deepest 13, in **79 seconds** -- against
+   TPR's 6 to 7 in optimised Java, which is a fair ratio for a first pass.
+
+   Two bits an entry, holding the depth modulo three: a neighbour is nearer,
+   level, or further, and only one of those is one less than the present
+   depth, so the true distance is recovered by walking down. Sweeping the
+   whole table per depth rather than keeping a frontier, because a frontier
+   of thirty-one million indices would cost more than the table it fills.
+
+   It is a build step, not a test. The suite checks the first five rings --
+   1,496 entries, under a second -- and the packing.
 3. The search that uses them: the centre table and the edge tables together,
    as the 3x3 already does with its two.
 4. The driver: phase-1 solutions feed phase 2, phase 2 feeds phase 3, and the

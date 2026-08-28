@@ -393,4 +393,238 @@ mod CubeSolvers.Revenge.Edges {
             let digit = Int64.tryToInt32(Int64.bitwiseAnd(Int64.rightShift(val, v), 15i64)) |> Option.getWithDefault(0);
             through(forward, back, edge, end, i + 1, idx * (12 - i) + digit, val - Int64.leftShift(0x111111111110i64, v))
 
+    ///
+    /// How many states the pruning table holds.
+    ///
+    pub def pruningSize(): Int32 = classCount() * rawCount()
+
+    ///
+    /// The state at a place, written into an array the caller owns.
+    ///
+    /// The table build unranks thirty-one million states. Allocating one
+    /// array per state is what makes that take hours rather than minutes.
+    ///
+    pub def unrankInto(out: Array[Int32, r], idx: Int32): Unit \ r =
+        let facts = halfFactorials();
+        let (_, val, parity) = fillInto(out, facts, 0, idx, 0xba9876543210i64, 0);
+        let last = Int64.tryToInt32(val) |> Option.getWithDefault(0);
+        if (parity `Int32.modulo` 2 == 0)
+            Array.put(last, 11, out)
+        else {
+            Array.put(Array.get(10, out), 11, out);
+            Array.put(last, 10, out)
+        }
+
+    ///
+    /// Places the first eleven entries into the caller's array.
+    ///
+    def fillInto(
+        out: Array[Int32, r],
+        facts: Vector[Int32],
+        i: Int32,
+        idx: Int32,
+        val: Int64,
+        parity: Int32
+    ): (Int32, Int64, Int32) \ r =
+        if (i >= 11)
+            (idx, val, parity)
+        else
+            let p = Vector.get(11 - i, facts);
+            let v = idx / p;
+            let shift = v * 4;
+            let digit = Int64.tryToInt32(Int64.bitwiseAnd(Int64.rightShift(val, shift), 15i64)) |> Option.getWithDefault(0);
+            Array.put(digit, i, out);
+            let mask = Int64.leftShift(1i64, shift) - 1i64;
+            let rest = Int64.bitwiseAnd(Int64.rightShift(val, 4), Int64.bitwiseNot(mask));
+            fillInto(out, facts, i + 1, idx `Int32.modulo` p, Int64.bitwiseAnd(val, mask) + rest, parity + v)
+
+    ///
+    /// The rank of the first `end` places after a move and rotation, reading
+    /// the state from an array.
+    ///
+    pub def rankThroughArray(
+        forward: Vector[Int32],
+        back: Vector[Int32],
+        edge: Array[Int32, r],
+        end: Int32
+    ): Int32 \ r =
+        throughArray(forward, back, edge, end, 0, 0, 0xba9876543210i64)
+
+    ///
+    /// Adds one digit, reading the place the move and rotation send it to.
+    ///
+    def throughArray(
+        forward: Vector[Int32],
+        back: Vector[Int32],
+        edge: Array[Int32, r],
+        end: Int32,
+        i: Int32,
+        idx: Int32,
+        val: Int64
+    ): Int32 \ r =
+        if (i >= end)
+            idx
+        else
+            let place = Vector.get(Array.get(Vector.get(i, forward), edge), back);
+            let v = place * 4;
+            let digit = Int64.tryToInt32(Int64.bitwiseAnd(Int64.rightShift(val, v), 15i64)) |> Option.getWithDefault(0);
+            throughArray(forward, back, edge, end, i + 1, idx * (12 - i) + digit, val - Int64.leftShift(0x111111111110i64, v))
+
+    ///
+    /// The exact distance to a paired cube, for every state, two bits each.
+    ///
+    /// Thirty-one million states in under eight megabytes. Two bits hold the
+    /// depth modulo three, which is enough: a neighbour is nearer, level with
+    /// or further from the goal, and only one of those is one less than the
+    /// present depth. The true distance is recovered by walking down.
+    ///
+    /// Built by sweeping rather than by queue: at each depth the whole table
+    /// is scanned for entries at that depth and their neighbours are filled
+    /// in. A frontier of thirty-one million indices would cost more than the
+    /// table.
+    ///
+    pub def pruning(rc: Region[r], limit: Int32): { table = Array[Int32, r], filled = Int32, depth = Int32 } \ r =
+        let classes = classify();
+        let tables = moveRotations();
+        let words = pruningSize() / 16;
+        let table = Array.repeat(rc, words, -1);
+        let scratch = Array.repeat(rc, 12, 0);
+        put(table, 0, 0);
+        let (filled, depth) = sweep(table, scratch, classes, tables, 1, 0, limit);
+        { table = table, filled = filled, depth = depth }
+
+    ///
+    /// One depth at a time, until the table is full or the limit is reached.
+    ///
+    def sweep(
+        table: Array[Int32, r],
+        scratch: Array[Int32, r],
+        classes: { sym2raw = Vector[Int32], raw2sym = Vector[Int32], selfSymmetry = Vector[Int32], classes = Int32 },
+        tables: { forward = Vector[Vector[Int32]], back = Vector[Vector[Int32]] },
+        filled: Int32,
+        depth: Int32,
+        limit: Int32
+    ): (Int32, Int32) \ r =
+        if (filled >= pruningSize() or depth >= limit)
+            (filled, depth)
+        else
+            let found = scanWords(table, scratch, classes, tables, depth `Int32.modulo` 3,
+                (depth + 1) `Int32.modulo` 3, 0, filled);
+            if (found == filled)
+                (filled, depth)
+            else
+                sweep(table, scratch, classes, tables, found, depth + 1, limit)
+
+    ///
+    /// Scans the packed words for entries at the current depth.
+    ///
+    def scanWords(
+        table: Array[Int32, r],
+        scratch: Array[Int32, r],
+        classes: { sym2raw = Vector[Int32], raw2sym = Vector[Int32], selfSymmetry = Vector[Int32], classes = Int32 },
+        tables: { forward = Vector[Vector[Int32]], back = Vector[Vector[Int32]] },
+        want: Int32,
+        next: Int32,
+        word: Int32,
+        filled: Int32
+    ): Int32 \ r =
+        if (word * 16 >= pruningSize())
+            filled
+        else
+            let packed = Array.get(word, table);
+            let after =
+                if (packed == -1)
+                    filled
+                else
+                    scanEntries(table, scratch, classes, tables, want, next, word, 0, packed, filled);
+            scanWords(table, scratch, classes, tables, want, next, word + 1, after)
+
+    ///
+    /// Scans the sixteen entries of one word.
+    ///
+    def scanEntries(
+        table: Array[Int32, r],
+        scratch: Array[Int32, r],
+        classes: { sym2raw = Vector[Int32], raw2sym = Vector[Int32], selfSymmetry = Vector[Int32], classes = Int32 },
+        tables: { forward = Vector[Vector[Int32]], back = Vector[Vector[Int32]] },
+        want: Int32,
+        next: Int32,
+        word: Int32,
+        j: Int32,
+        packed: Int32,
+        filled: Int32
+    ): Int32 \ r =
+        if (j >= 16)
+            filled
+        else
+            let after =
+                if (Int32.bitwiseAnd(Int32.rightShift(packed, j * 2), 3) == want)
+                    expand(table, scratch, classes, tables, word * 16 + j, next, filled)
+                else
+                    filled;
+            scanEntries(table, scratch, classes, tables, want, next, word, j + 1, packed, after)
+
+    ///
+    /// Fills in every neighbour of one state that has not been reached yet.
+    ///
+    def expand(
+        table: Array[Int32, r],
+        scratch: Array[Int32, r],
+        classes: { sym2raw = Vector[Int32], raw2sym = Vector[Int32], selfSymmetry = Vector[Int32], classes = Int32 },
+        tables: { forward = Vector[Vector[Int32]], back = Vector[Vector[Int32]] },
+        at: Int32,
+        next: Int32,
+        filled: Int32
+    ): Int32 \ r =
+        let first = Vector.get(at / rawCount(), classes#sym2raw);
+        unrankInto(scratch, first * rawCount() + (at `Int32.modulo` rawCount()));
+        step(table, scratch, classes, tables, 0, next, filled)
+
+    ///
+    /// Tries each of the phase's moves from the state in `scratch`.
+    ///
+    def step(
+        table: Array[Int32, r],
+        scratch: Array[Int32, r],
+        classes: { sym2raw = Vector[Int32], raw2sym = Vector[Int32], selfSymmetry = Vector[Int32], classes = Int32 },
+        tables: { forward = Vector[Vector[Int32]], back = Vector[Vector[Int32]] },
+        m: Int32,
+        next: Int32,
+        filled: Int32
+    ): Int32 \ r =
+        if (m >= edgeMoves())
+            filled
+        else
+            let plain = m * 8;
+            let movedFirst = rankThroughArray(
+                Vector.get(plain, tables#forward), Vector.get(plain, tables#back), scratch, 4);
+            let packed = Vector.get(movedFirst, classes#raw2sym);
+            let symmetry = packed `Int32.modulo` 8;
+            let withSymmetry = plain + symmetry;
+            let movedRest = rankThroughArray(
+                Vector.get(withSymmetry, tables#forward),
+                Vector.get(withSymmetry, tables#back), scratch, 10) `Int32.modulo` rawCount();
+            let idx = (packed / 8) * rawCount() + movedRest;
+            let after =
+                if (get(table, idx) == 3) {
+                    put(table, idx, next);
+                    filled + 1
+                } else
+                    filled;
+            step(table, scratch, classes, tables, m + 1, next, after)
+
+    ///
+    /// The two bits at `index`.
+    ///
+    pub def get(table: Array[Int32, r], index: Int32): Int32 \ r =
+        Int32.bitwiseAnd(Int32.rightShift(Array.get(index / 16, table), (index `Int32.modulo` 16) * 2), 3)
+
+    ///
+    /// Writes the two bits at `index`, which must be unwritten.
+    ///
+    pub def put(table: Array[Int32, r], index: Int32, value: Int32): Unit \ r =
+        let word = index / 16;
+        let shift = (index `Int32.modulo` 16) * 2;
+        Array.put(Int32.bitwiseXor(Array.get(word, table), Int32.leftShift(Int32.bitwiseXor(3, value), shift)), word, table)
+
 }

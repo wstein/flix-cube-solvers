@@ -381,7 +381,7 @@ for the whole chain.
 | 1 | R and L colours onto R and L | 36 | 735,471 | 8 |
 | 2 | U/D and F/B centres home, R/L left finishable, parities matched | 28 | 1,801,800 | 9 |
 | 3, centres | the centres finished, parities still matched | 20 | 117,600 | 10 |
-| 3, edges | the edges paired | 20 | 31M | not built |
+| 3, edges | the edges paired | 17 | 31,006,080 | 13 |
 
 Every table is complete — each state reaches a goal — which is what makes the
 walk down them a solution rather than an attempt. On the three shared 4x4
