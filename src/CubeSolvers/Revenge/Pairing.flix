@@ -32,7 +32,8 @@ mod CubeSolvers.Revenge.Pairing {
             side = Vector[Vector[Int32]],
             flips = Vector[Int32]
         },
-        binomials = Vector[Vector[Int32]]
+        binomials = Vector[Vector[Int32]],
+        orbits = Vector[{ low = Vector[Int32], high = Vector[Int32] }]
     }
 
     ///
@@ -73,7 +74,8 @@ mod CubeSolvers.Revenge.Pairing {
           scratch = Array.repeat(rc, 12, 0),
           layout = CubeSolvers.Revenge.Pairs.layout(),
           centreSteps = Reduce.stepsFor(moves()),
-          binomials = CubeSolvers.Revenge.Centers.binomials() }
+          binomials = CubeSolvers.Revenge.Centers.binomials(),
+          orbits = CubeSolvers.Revenge.Pairs.orbitMaps() }
 
     ///
     /// How far the edges are from paired, walked out of the two-bit table.
@@ -120,11 +122,23 @@ mod CubeSolvers.Revenge.Pairing {
     /// `limit`.
     ///
     pub def solution(t: Tables[r], cube: Facelets, limit: Int32): Option[MoveSequence] \ r =
-        let index = Edges.indexOf(t#classes, CubeSolvers.Revenge.Pairs.asEdgeStateIn(t#layout, cube));
-        let start = edgeDistance(t, index);
+        let pairing = CubeSolvers.Revenge.Pairs.relativeIn(t#layout, cube);
         let centre = Reduce.coordinate(cube);
+        // Walked once, at the root. Every node below derives its distance
+        // from its parent's, which is what two bits an entry is for.
+        let edgeDepth = edgeDistance(t, edgeIndexOf(t, pairing));
         List.range(0, limit + 1) |> List.findMap(depth ->
-            walk(t, cube, centre, index, start, depth, -1))
+            walk(t, centre, pairing, edgeDepth, depth, -1))
+
+    ///
+    /// The pairing, as the edge table indexes it.
+    ///
+    def edgeIndexOf(t: Tables[r], pairing: Vector[Int32]): Int32 =
+        let l = t#layout;
+        Edges.indexOf(t#classes,
+            { edge = Vector.range(0, 12) |> Vector.map(theirs ->
+                Vector.get(Vector.get(Vector.get(theirs, l#back), pairing), l#correspondence)),
+              turned = Vector.range(0, 12) })
 
     ///
     /// Depth-first to exactly `depth` moves, pruned by both tables.
@@ -149,17 +163,15 @@ mod CubeSolvers.Revenge.Pairing {
     /// Everything is carried in coordinates. Turning ninety-six stickers at
     /// every node, and reading a coordinate off them, costs twenty times what
     /// a table lookup does -- and this phase reaches thirteen moves deep.
-    /// The centres are carried as a coordinate, which is exact: their slots
-    /// do not move with the cube. The edges cannot be, because a move
-    /// conjugates the pairing permutation -- a carried edge index tracks it
-    /// in a frame the moves are turning, so its zero is not the goal and is
-    /// never even reached. The edge index is therefore read from the cube,
-    /// and the carried one is kept only to bound the search.
+    /// Nothing is turned. The centres travel as a coordinate, exact because
+    /// their slots do not move with the cube; the pairing travels as itself,
+    /// each move sending it to `b . R . a`. So the pairing stays absolute --
+    /// `R` being the identity is the goal -- and a node costs lookups rather
+    /// than ninety-six stickers.
     def walk(
         t: Tables[r],
-        cube: Facelets,
         centre: Int32,
-        edgeIndex: Int32,
+        pairing: Vector[Int32],
         edgeDepth: Int32,
         depth: Int32,
         last: Int32
@@ -168,25 +180,19 @@ mod CubeSolvers.Revenge.Pairing {
             None
         else
             let centreDepth = Vector.get(centre, t#centres);
-            if (centreDepth == 0 and CubeSolvers.Revenge.Pairs.isPairedIn(t#layout, cube))
+            if (centreDepth == 0 and pairing == Vector.range(0, 12))
                 if (depth == 0) Some(Nil) else None
-            else if (depth == 0)
-                None
-            else if (Int32.max(centreDepth, edgeDepth) > depth)
+            else if (depth == 0 or Int32.max(centreDepth, edgeDepth) > depth)
                 None
             else
                 List.range(0, Vector.length(moves()))
                     |> List.filter(m -> allowed(m, last))
                     |> List.findMap(m ->
-                        match CubeSolvers.Turning.apply(cube, Vector.get(m, moves())) {
-                            case Err(_)   => None
-                            case Ok(next) =>
-                                let toCentre = Reduce.after(t#centreSteps, t#binomials, centre, m);
-                                let toIndex = Edges.after(t#classes, t#rotations, t#scratch, edgeIndex, m);
-                                let toDepth = stepped(Edges.get(t#edges, toIndex), edgeDepth);
-                                walk(t, next, toCentre, toIndex, toDepth, depth - 1, m)
-                                    |> Option.map(rest -> Vector.get(m, moves()) :: rest)
-                        })
+                        let toCentre = Reduce.after(t#centreSteps, t#binomials, centre, m);
+                        let toPairing = CubeSolvers.Revenge.Pairs.turnedBy(Vector.get(m, t#orbits), pairing);
+                        let toDepth = stepped(Edges.get(t#edges, edgeIndexOf(t, toPairing)), edgeDepth);
+                        walk(t, toCentre, toPairing, toDepth, depth - 1, m)
+                            |> Option.map(rest -> Vector.get(m, moves()) :: rest))
 
     ///
     /// The neighbour's distance, from its two stored bits and this one's.
