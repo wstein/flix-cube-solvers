@@ -1,10 +1,12 @@
 ///
-/// Cryptographically-random 3x3 random-state scrambles.
+/// 3x3 random-state and exact shallow scrambles.
 ///
 /// The sampled state is uniform over legal fixed-centre 3x3 positions, except
 /// for the solved state and its eighteen one-move neighbours. That is the WCA
 /// random-state condition for 3x3. The supplied two-phase engine then writes
 /// a sequence to reach it; that sequence is deliberately not claimed shortest.
+/// `atDistance` and `easy`, by contrast, use `Rubik.Easy`'s exact table and
+/// are certified shortest for their three- through five-move states.
 ///
 mod CubeSolvers.Rubik.Scramble {
 
@@ -33,6 +35,49 @@ mod CubeSolvers.Rubik.Scramble {
             case Some(home) => CubeSolvers.inverse(home)
             case None       => Nil
         }
+
+    ///
+    /// A seeded scramble whose resulting state is exactly `distance` moves
+    /// from solved, followed by the next seed.
+    ///
+    /// `table` must reach the requested distance. `Rubik.Easy.standard()`
+    /// prepares all distances through five moves.
+    ///
+    pub def atDistance(
+        table: CubeSolvers.Rubik.Easy.Table,
+        seed: Int64,
+        distance: Int32
+    ): (MoveSequence, Int64) =
+        let choices = CubeSolvers.Rubik.Easy.layer(table, distance);
+        let (index, next) = draw(seed, Vector.length(choices));
+        let state = CubeSolvers.Rubik.Easy.stateOf(Vector.get(index, choices));
+        match CubeSolvers.Rubik.Easy.descend(table, state) {
+            case Some(home) => (CubeSolvers.inverse(home), next)
+            case None       => (Nil, next)
+        }
+
+    ///
+    /// A seeded easy scramble, choosing an exact distance of 3, 4, or 5 with
+    /// equal probability, then a state uniformly from that layer.
+    ///
+    pub def easy(table: CubeSolvers.Rubik.Easy.Table, seed: Int64): (MoveSequence, Int64) =
+        let (offset, next) = draw(seed, 3);
+        atDistance(table, next, offset + 3)
+
+    /// A cryptographically-random scramble at one exact shallow distance.
+    pub def secureAtDistance(table: CubeSolvers.Rubik.Easy.Table, distance: Int32): MoveSequence \ IO =
+        let random = new SecureRandom();
+        let choices = CubeSolvers.Rubik.Easy.layer(table, distance);
+        let state = CubeSolvers.Rubik.Easy.stateOf(Vector.get(random.nextInt(Vector.length(choices)), choices));
+        match CubeSolvers.Rubik.Easy.descend(table, state) {
+            case Some(home) => CubeSolvers.inverse(home)
+            case None       => Nil
+        }
+
+    /// A cryptographically-random easy scramble at exactly 3, 4, or 5 moves.
+    pub def secureEasy(table: CubeSolvers.Rubik.Easy.Table): MoveSequence \ IO =
+        let random = new SecureRandom();
+        secureAtDistance(table, random.nextInt(3) + 3)
 
     def sample(random: SecureRandom): State \ IO =
         let corners = shuffle(random, List.range(0, 8), Nil);
@@ -84,6 +129,24 @@ mod CubeSolvers.Rubik.Scramble {
                 (picked, x :: others)
         case Nil => (0, Nil)
     }
+
+    /// The non-zero state of the Park-Miller generator after `seed`.
+    def next(seed: Int64): Int64 =
+        let modulus = 2147483647i64;
+        let normalized = Int64.modulo(Int64.abs(seed), modulus - 1i64) + 1i64;
+        Int64.modulo(normalized * 48271i64, modulus)
+
+    /// A uniform integer in [0, bound), with rejection avoiding modulo bias.
+    def draw(seed: Int64, bound: Int32): (Int32, Int64) =
+        let after = next(seed);
+        let size = 2147483646i64;
+        let width = Int32.toInt64(bound);
+        let limit = size - Int64.modulo(size, width);
+        let candidate = after - 1i64;
+        if (candidate < limit)
+            (Int64.tryToInt32(Int64.modulo(candidate, width)) |> Option.getWithDefault(0), after)
+        else
+            draw(after, bound)
 
     /// Exactly the states the WCA's general minimum excludes for 3x3.
     def tooEasy(state: State): Bool =

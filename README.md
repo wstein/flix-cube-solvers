@@ -35,7 +35,8 @@ Early, but the whole path works: stickers in, cubies, table, search, moves out.
 | `CubeSolvers.Rubik.Reduce` | The search into the subgroup no side quarter turn is needed from | Done |
 | `CubeSolvers.Rubik.Finish` | The finish, using only U, D and half turns | Done |
 | `CubeSolvers.Rubik.Engine` | A prepared 3x3 solver; the second `Solver` instance | Done |
-| `CubeSolvers.Rubik.Scramble` | Secure 3x3 random-state scrambles (not optimal-length) | Done |
+| `CubeSolvers.Rubik.Easy` | Compact exact-distance table through five 3x3 moves | Done |
+| `CubeSolvers.Rubik.Scramble` | Secure random-state and exact shallow 3x3 scrambles | Done |
 | `CubeSolvers.Revenge.Centers` | Tsai's first phase: R and L colours onto R and L | Done |
 | `CubeSolvers.Revenge.Separate` | Tsai's second phase: the other centres, and where R/L may stop | Done |
 | `CubeSolvers.Revenge.Reduce` | Tsai's third phase, centres half: 58,800 states | Done |
@@ -173,6 +174,23 @@ let scramble = CubeSolvers.Rubik.Scramble.secure(engine); // \ IO
 The *state* distribution fulfils the WCA minimum-distance rule, but the 3x3
 engine is deliberately not optimal, so its printed sequence is not certified
 shortest. As with 2x2, official WCA competitions must use TNoodle.
+
+### Proven 3x3 easy scrambles
+
+`CubeSolvers.Rubik.Easy.standard()` builds the complete half-turn-metric
+table through five moves: 621,649 states in total, including 3,240 states at
+three moves, 43,239 at four, and 574,908 at five. It retains compact
+permutation-orientation keys, not whole cubie vectors. Prepare it once, then
+draw as many certified-minimum scrambles as needed:
+
+```flix
+let table = CubeSolvers.Rubik.Easy.standard();
+let scramble = CubeSolvers.Rubik.Scramble.secureEasy(table); // \ IO
+// The resulting state is exactly 3, 4, or 5 moves from solved.
+```
+
+For reproducible output, use `Scramble.atDistance(table, seed, distance)` or
+`Scramble.easy(table, seed)`, each returning the next seed with its scramble.
 
 ## The model
 
