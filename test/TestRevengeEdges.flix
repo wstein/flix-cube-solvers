@@ -57,6 +57,22 @@ mod TestRevengeEdges {
         Assert.assertEq(expected = 0, Vector.get(0, found#raw2sym) / 8)
 
     ///
+    /// The allocation-free indexer is the search hot path. It must be exactly
+    /// the older State-based indexer for every first-coordinate arrangement;
+    /// those are the complete set on which the symmetry fold is defined.
+    ///
+    @Test
+    def directPermutationIndexingAgreesWithStateIndexing(): Unit \ Assert =
+        let classes = classify();
+        let rotations = CubeSolvers.Revenge.Edges.rotationTables();
+        foreach (i <- List.range(0, firstCount())) {
+            let state = unrank(i * rawCount());
+            Assert.assertEq(
+                expected = CubeSolvers.Revenge.Edges.indexOf(classes, state),
+                CubeSolvers.Revenge.Edges.indexOfPermutation(classes, rotations, state#edge))
+        }
+
+    ///
     /// The packed table holds two bits per state, and reading back what was
     /// written is the whole contract.
     ///

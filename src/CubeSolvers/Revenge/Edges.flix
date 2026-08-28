@@ -63,6 +63,16 @@ mod CubeSolvers.Revenge.Edges {
         climb(std#edge, end, 0, 0, 0xba9876543210i64)
 
     ///
+    /// The rank of an already-standard pairing permutation.
+    ///
+    /// The phase-three search carries this form directly. Keeping this
+    /// separate from `rank` avoids constructing a `State` just to compose its
+    /// identity `turned` permutation away again.
+    ///
+    pub def rankPermutation(edge: Vector[Int32], end: Int32): Int32 =
+        climb(edge, end, 0, 0, 0xba9876543210i64)
+
+    ///
     /// Adds one digit of the ranking.
     ///
     def climb(edge: Vector[Int32], end: Int32, i: Int32, idx: Int32, val: Int64): Int32 =
@@ -360,6 +370,19 @@ mod CubeSolvers.Revenge.Edges {
           back = pairs |> List.map(snd) |> List.toVector }
 
     ///
+    /// The eight symmetry rotations in the same rank-through form as moves.
+    ///
+    /// Built once with the tables. `rankThrough` can then rank a rotated
+    /// pairing without allocating the rotated `State`.
+    ///
+    pub def rotationTables(): { forward = Vector[Vector[Int32]], back = Vector[Vector[Int32]] } =
+        let pairs = List.range(0, 8) |> List.map(r ->
+            let turned = rotate(solved(), r);
+            (turned#edge, backward(turned)));
+        { forward = pairs |> List.map(fst) |> List.toVector,
+          back = pairs |> List.map(snd) |> List.toVector }
+
+    ///
     /// The rank of the first `end` places after a move and rotation, without
     /// building the state it would give.
     ///
@@ -637,6 +660,23 @@ mod CubeSolvers.Revenge.Edges {
         let packed = Vector.get(rank(state, 4), classes#raw2sym);
         let symmetry = packed `Int32.modulo` 8;
         let rest = rank(rotate(state, symmetry), 10) `Int32.modulo` rawCount();
+        (packed / 8) * rawCount() + rest
+
+    ///
+    /// Where an already-standard pairing permutation sits in the table.
+    ///
+    /// This is `indexOf(classes, { edge = pairing, turned = identity })`, but
+    /// it applies the chosen symmetry while ranking instead of allocating and
+    /// rotating a `State`. It is the search hot path.
+    ///
+    pub def indexOfPermutation(
+        classes: { sym2raw = Vector[Int32], raw2sym = Vector[Int32], selfSymmetry = Vector[Int32], classes = Int32 },
+        rotations: { forward = Vector[Vector[Int32]], back = Vector[Vector[Int32]] },
+        pairing: Vector[Int32]
+    ): Int32 =
+        let packed = Vector.get(rankPermutation(pairing, 4), classes#raw2sym);
+        let symmetry = packed `Int32.modulo` 8;
+        let rest = rankThrough(rotations, symmetry, pairing, 10) `Int32.modulo` rawCount();
         (packed / 8) * rawCount() + rest
 
     ///
