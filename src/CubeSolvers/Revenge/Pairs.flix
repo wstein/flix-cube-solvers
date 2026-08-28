@@ -107,6 +107,92 @@ mod CubeSolvers.Revenge.Pairs {
         distinct == 12 and crossed `Int32.modulo` 2 == 0
 
     ///
+    /// Everything about the wings that does not depend on the cube.
+    ///
+    /// The orbits, the pairing of places, where each wing belongs and how
+    /// this package's numbering maps to the edge tables'. All of it is fixed
+    /// by the geometry, and recomputing it per cube -- which meant twenty
+    /// sticker permutations and an orbit walk each time -- is what made the
+    /// search take minutes rather than seconds.
+    ///
+    pub type alias Layout = {
+        sides = Vector[(Int32, Int32)],
+        home = Vector[Int32],
+        correspondence = Vector[Int32],
+        back = Vector[Int32],
+        ordered = Vector[(Int32, Int32)],
+        wingOfFaces = Map[(Int32, Int32), Int32]
+    }
+
+    ///
+    /// Works it out, once.
+    ///
+    pub def layout(): Layout =
+        let tau = placeCorrespondence();
+        let slots = CubeSolvers.Revenge.Wings.ordered();
+        { sides = sides(),
+          home = homePlace(),
+          correspondence = tau,
+          back = invert(tau),
+          ordered = slots,
+          wingOfFaces = slots
+            |> Vector.mapWithIndex(i -> match (a, b) -> ((a / 16, b / 16), i))
+            |> Vector.toList
+            |> List.toMap }
+
+    ///
+    /// Which wing sits at each place, given the layout.
+    ///
+    /// The same answer as `Wings.identity`, without rebuilding the piece
+    /// tables and searching them for every wing. This runs once per node of
+    /// the third phase's search, so the difference is the difference between
+    /// seconds and minutes.
+    ///
+    pub def identityIn(l: Layout, cube: Facelets): Vector[Int32] =
+        let stickers = CubeSolvers.Solver.stickersOf(cube);
+        l#ordered |> Vector.map(match (a, b) ->
+            let shown = (faceNumber(Vector.get(a, stickers)), faceNumber(Vector.get(b, stickers)));
+            Map.getWithDefault(shown, -1, l#wingOfFaces))
+
+    ///
+    /// How far each place is from holding a matching pair, given the layout.
+    ///
+    pub def relativeIn(l: Layout, cube: Facelets): Vector[Int32] =
+        let who = identityIn(l, cube);
+        let low = l#sides |> Vector.map(match (x, _) -> Vector.get(Vector.get(x, who), l#home));
+        let high = l#sides |> Vector.map(match (_, y) -> Vector.get(Vector.get(y, who), l#home));
+        let back = invert(high);
+        low |> Vector.map(p -> Vector.get(p, back))
+
+    ///
+    /// Whether every place holds a matching pair, given the layout.
+    ///
+    /// Cheap enough to ask at every node of a search: two dozen lookups and
+    /// a comparison, where indexing the pruning table costs a ranking and a
+    /// rotation.
+    ///
+    pub def isPairedIn(l: Layout, cube: Facelets): Bool =
+        relativeIn(l, cube) == Vector.range(0, 12)
+
+    ///
+    /// Whether the wings are split the way the third phase needs, given the
+    /// layout.
+    ///
+    pub def isSeparatedIn(l: Layout, cube: Facelets): Bool =
+        let who = identityIn(l, cube);
+        let places = l#sides |> Vector.map(match (x, _) -> Vector.get(Vector.get(x, who), l#home));
+        List.length(List.distinct(Vector.toList(places))) == 12
+
+    ///
+    /// The cube's pairing in the edge tables' numbering, given the layout.
+    ///
+    pub def asEdgeStateIn(l: Layout, cube: Facelets): CubeSolvers.Revenge.Edges.State =
+        let mine = relativeIn(l, cube);
+        { edge = Vector.range(0, 12) |> Vector.map(theirs ->
+            Vector.get(Vector.get(Vector.get(theirs, l#back), mine), l#correspondence)),
+          turned = Vector.range(0, 12) }
+
+    ///
     /// How far each place is from holding a matching pair.
     ///
     /// The identity permutation means every place holds one, which is what

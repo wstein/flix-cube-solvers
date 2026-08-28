@@ -109,11 +109,16 @@ mod CubeSolvers.Revenge.Reduce {
     ///
     /// Where each slot of a group goes, for each of this phase's moves.
     ///
-    def group(chosen: Vector[Int32]): Vector[Vector[Int32]] =
+    def group(chosen: Vector[Int32]): Vector[Vector[Int32]] = groupWith(chosen, moves())
+
+    ///
+    /// Where each slot of a group goes, for each of the given moves.
+    ///
+    def groupWith(chosen: Vector[Int32], ms: Vector[Move]): Vector[Vector[Int32]] =
         let all = slots();
         let ordinalOfSlot = all |> Vector.mapWithIndex(i -> slot -> (slot, i)) |> Vector.toList |> List.toMap;
         let ordinalIn = chosen |> Vector.mapWithIndex(i -> slot -> (slot, i)) |> Vector.toList |> List.toMap;
-        moves() |> Vector.map(m ->
+        ms |> Vector.map(m ->
             match CubeSolvers.Turning.permutation(Kind.Cube4x4, m) {
                 case Err(_)   => Vector.range(0, Vector.length(chosen))
                 case Ok(perm) => chosen |> Vector.map(slot ->
@@ -127,9 +132,14 @@ mod CubeSolvers.Revenge.Reduce {
     /// They are closed under these moves by construction: the twelve are
     /// exactly the arrangements these moves reach from solved.
     ///
-    def sideMoves(): Vector[Vector[Int32]] =
+    def sideMoves(): Vector[Vector[Int32]] = sideMovesWith(moves())
+
+    ///
+    /// Where each of the twelve R and L arrangements goes, for given moves.
+    ///
+    def sideMovesWith(ms: Vector[Move]): Vector[Vector[Int32]] =
         let binoms = binomials();
-        let steps = group(sideSlots());
+        let steps = groupWith(sideSlots(), ms);
         let goalsOf = sideGoals();
         Vector.range(0, Vector.length(steps)) |> Vector.map(m ->
             goalsOf |> Vector.map(g ->
@@ -138,6 +148,56 @@ mod CubeSolvers.Revenge.Reduce {
                     case Some(i) => i
                     case None    => -1
                 }))
+
+    ///
+    /// The centre transitions, for a given move order.
+    ///
+    /// The table's distances do not depend on the order its moves were listed
+    /// in, but a transition looked up by move number does -- so the search
+    /// builds these against its own list.
+    ///
+    pub def stepsFor(ms: Vector[Move]): {
+        up = Vector[Vector[Int32]],
+        front = Vector[Vector[Int32]],
+        side = Vector[Vector[Int32]],
+        flips = Vector[Int32]
+    } =
+        let solvedCube = CubeSolvers.Solver.solved(Kind.Cube4x4);
+        { up = groupWith(upSlots(), ms),
+          front = groupWith(frontSlots(), ms),
+          side = sideMovesWith(ms),
+          // Against the same move list, or the parity bit would be read from
+          // the wrong move.
+          flips = ms |> Vector.map(m ->
+            match CubeSolvers.Turning.apply(solvedCube, m) {
+                case Err(_)    => 0
+                case Ok(after) => CubeSolvers.Revenge.Separate.mismatch(after)
+            }) }
+
+    ///
+    /// Where a move takes a centre coordinate.
+    ///
+    pub def after(
+        steps: {
+            up = Vector[Vector[Int32]],
+            front = Vector[Vector[Int32]],
+            side = Vector[Vector[Int32]],
+            flips = Vector[Int32]
+        },
+        binoms: Vector[Vector[Int32]],
+        at: Int32,
+        m: Int32
+    ): Int32 =
+        let upAt = at / (pairCount() * sideCount() * 2);
+        let frontAt = (at / (sideCount() * 2)) `Int32.modulo` pairCount();
+        let sideAt = (at / 2) `Int32.modulo` sideCount();
+        let parityAt = at `Int32.modulo` 2;
+        let upTo = Vector.get(m, neighbours(binoms, steps#up, 8, 4, upAt));
+        let frontTo = Vector.get(m, neighbours(binoms, steps#front, 8, 4, frontAt));
+        let sideTo = Vector.get(sideAt, Vector.get(m, steps#side));
+        let flipped = Vector.get(m, steps#flips);
+        ((upTo * pairCount() + frontTo) * sideCount() + sideTo) * 2
+            + ((parityAt + flipped) `Int32.modulo` 2)
 
     ///
     /// The exact number of moves each arrangement is from solved.

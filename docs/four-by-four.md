@@ -171,6 +171,39 @@ every edge: three cubes scrambled 3, 5 and 7 moves deep came back in 2, 3 and
 Building the tables costs about eighty seconds, so the search is not in the
 test suite -- the same decision as the table itself.
 
+## The driver, and the one thing left
+
+`CubeSolvers.Revenge.Engine` chains all of it: phase one, then phase two's
+answers enumerated and sifted for wing separation, then phase three, then the
+reduced cube handed to `CubeSolvers.Rubik` -- and `Revenge.Reduced.asRubik`
+reads a reduced 4x4 as the 3x3 it has become. That last step is verified: a
+4x4 scrambled with outer turns only was read as a 3x3, solved in seven moves,
+and those moves solved the 4x4.
+
+Sifting is fast enough: 3,000 second-phase answers enumerate in 87ms and sift
+in 145ms, and sixteen of them separate the wings at depth six.
+
+What is not fast enough is the third phase at the depth real cubes need. Its
+distance for a real candidate is eleven, and the answers are around thirteen;
+the search finds nothing at twelve in about a second per candidate, and does
+not finish at thirteen.
+
+The cost is per node, and the reason is the frame:
+
+- The **centres** can be carried as a coordinate. Their slots do not move with
+  the cube, so `Reduce.after` is exact.
+- The **edges** cannot. A move conjugates the pairing permutation, so a
+  carried index tracks it in a frame the moves are turning. Its zero is not
+  the goal -- worse, it is never reached, so a search that trusts it finds
+  nothing at any depth. Reading the pairing from the cube each node is
+  correct, and costs ninety-six stickers turned plus a ranking.
+
+The fix is to carry the pairing itself rather than the cube or the index.
+Every move acts on it as `R -> b . R . a`, where `a` and `b` are that move's
+permutations of the two wing orbits, both derivable once. Then a node costs
+two dozen lookups, the pairing stays absolute so `R = identity` is the goal,
+and the table is consulted only for the bound. That is the last piece.
+
 ## What is next
 
 1. Enumerate phase-2 solutions rather than walking one, and keep those that
