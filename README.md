@@ -39,6 +39,7 @@ Early, but the whole path works: stickers in, cubies, table, search, moves out.
 | `CubeSolvers.Revenge.Reduce` | Tsai's third phase, centres half: 58,800 states | Done |
 | `CubeSolvers.Revenge.Wings` | The 4x4 wings: which piece is where, and the permutation's parity | Done |
 | `CubeSolvers.Revenge.Corners` | The 4x4 corners, for their permutation's parity | Done |
+| `CubeSolvers.Revenge.Pairs` | How far the wings are from being paired, as one permutation of twelve | Done |
 | `CubeSolvers.Revenge.Walk` | Walking a phase downhill through its table | Done |
 | — | 4x4 edge pairing, then the 3x3 finish and its parities | **In progress** |
 | — | The 5x5 | Not started |
@@ -59,7 +60,7 @@ different levels:
 ## Quick start
 
 ```sh
-./flixw test         # 92 tests, about 17s: the tables are built and checked
+./flixw test         # 98 tests, about 15s: the tables are built and checked
 ./flixw check        # type-check; the fast loop
 ./flixw format       # reformat in place before committing
 ```

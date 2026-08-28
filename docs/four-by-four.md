@@ -84,14 +84,46 @@ is what the 31M-state edge table needs: as a `Vector` it would be a couple of
 hundred megabytes, as bytes about a tenth of that, and it never has to be
 copied out.
 
+## What the edge coordinate turned out to be
+
+Not a placement and a permutation, as the table sizes suggested from outside,
+but one permutation of twelve. Read each place's two wings, ask which place
+each came from, and compose one answer with the other's inverse. The identity
+means every place holds a matching pair, which is what reduction is. Where a
+pair *belongs* never enters into it — a pair in the wrong place is still a
+pair, and the 3x3 will move it.
+
+That reading only works because of a fact about the third phase rather than
+about the cube. Under all 36 moves a wing can reach all 24 places, so there is
+no way to speak of "the two wings of a place" as an ordered thing. Under the
+third phase's twenty moves the wings split into two orbits of twelve, one wing
+of every place in each — and *that* is what lets twenty-four wings be read as
+a permutation of twelve. It is computed here, not tabulated.
+
+Two consequences, both found the hard way:
+
+- **The second phase does not guarantee the split.** A cube leaving it may
+  have both wings of some place in the same orbit, and then the coordinate is
+  not even a permutation. TPR checks this after the fact, in `EdgeCube`, and
+  discards the phase-2 answers that fail — which is why it generates up to
+  five hundred of them. Tsai lists the same thing as an objective of his
+  second step. Either way it is a condition on the *answer*, not on the
+  coordinate.
+- **So the driver cannot walk one phase-2 solution and continue.** It has to
+  enumerate them, keep those that separate the wings, and try each. The
+  downhill walk that serves phases 1 and 2 is not enough on its own.
+
 ## What is next
 
-1. Fold the wing parity into phase 2's coordinate, which trebles nothing --
-   it doubles 900,900 to 1,801,800 -- and needs the corner permutation's
-   parity to say which value is the goal.
-2. Phase 3 edges: the placement of four paired edges at BR, BL, FL and FR
-   against the arrangement of the other eight. 31M states, written with
-   `bytesInto`.
-3. The driver: phase 1 solutions feed phase 2, phase 2 feeds phase 3, and the
+1. Enumerate phase-2 solutions rather than walking one, and keep those that
+   separate the wings. The 3x3's `manyExactly` is the shape to copy.
+2. Phase 3's edge tables. The exact 12!/2 distance is 239.5M states, which TPR
+   folds to 31M with eight symmetries. Projections are cheaper and need no
+   symmetry code: where four places map to is 11,880 states, and three such
+   tables taken together prune admissibly. Worth measuring before writing the
+   symmetry machinery.
+3. The search that uses them: the centre table and the edge tables together,
+   as the 3x3 already does with its two.
+4. The driver: phase-1 solutions feed phase 2, phase 2 feeds phase 3, and the
    result goes to `CubeSolvers.Rubik`. TPR tries 10,000 phase-1 solutions, 500
-   phase-2 attempts and 100 phase-3 attempts to reach its average.
+   phase-2 attempts and 100 phase-3 attempts to reach 44.39.

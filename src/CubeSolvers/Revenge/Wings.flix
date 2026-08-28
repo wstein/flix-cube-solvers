@@ -138,6 +138,27 @@ mod CubeSolvers.Revenge.Wings {
     pub def isReduced(cube: Facelets): Bool = paired(cube) == 12
 
     ///
+    /// Which place each wing belongs to, by wing number.
+    ///
+    pub def homePlace(): Vector[Int32] =
+        let byPlace = places() |> Vector.mapWithIndex(i -> match (a, b) -> (i, a, b));
+        ordered() |> Vector.mapWithIndex(w -> _ ->
+            match Vector.findMap(match (i, a, b) ->
+                    if (w == wingAt(a) or w == wingAt(b)) Some(i) else None, byPlace) {
+                case Some(i) => i
+                case None    => -1
+            })
+
+    ///
+    /// Which wing number the wing whose first sticker is `slot` has.
+    ///
+    def wingAt(slot: Int32): Int32 =
+        match Vector.findIndexOf(match (a, b) -> a == slot or b == slot, pieces()) {
+            case Some(i) => i
+            case None    => -1
+        }
+
+    ///
     /// Each wing's two stickers, in an order that tells it from its mirror.
     ///
     /// Two wings of one edge show the same two colours, so a colour pair
