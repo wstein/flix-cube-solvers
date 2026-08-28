@@ -55,24 +55,43 @@ leave behind, and parity. Edges are 1538 symmetry classes against 20,160 raw
 states, stored two bits per entry — 31M entries in under 8MB, and the reason
 TPR's tables are 20MB rather than 200.
 
+## Telling a wing from its mirror
+
+The edge coordinates are about which wing is where, and two wings of one edge
+show the same two colours. TPR tells them apart with a table of ordered
+sticker pairs: the U-F edge appears once as `{U, F}` and once as `{F, U}`, and
+a wing is identified by matching the colours it shows against that order.
+
+The same thing falls out of the geometry, so no table is needed. Two faces
+meet along a direction — the cross product of their outward normals — and the
+two wings sit at opposite ends of it. Take the faces in the order that
+direction points, and the pair is ordered. Turning the cube turns the
+direction with it, so the rule survives every move.
+
+`CubeSolvers.Revenge.Wings.identity` does that, and `parity` counts the
+inversions of the result, which is the bit Tsai's second step has to leave
+matching the corners'.
+
 ## What is done
 
-`CubeSolvers.Revenge.Centers` has phase 1 and two further centre stages of its
-own devising, which solve centres completely in 15 to 23 moves. Those two
-stages are not Tsai's and will be replaced: solving centres before touching
-edges is exactly what costs the twenty moves between 44 and the mid sixties.
+Phases 1, 2 and the centre half of phase 3 are built, complete, and solve the
+centres of real cubes. `CubeSolvers.Revenge.Wings` models the pieces, knows
+when a place holds a matching pair, identifies which wing is where, and gives
+the permutation's parity.
 
-`CubeSolvers.Revenge.Wings` models the pieces and knows when a place holds a
-matching pair.
+`CubeSolvers.Distances.bytesInto` writes a table as bytes in a region, which
+is what the 31M-state edge table needs: as a `Vector` it would be a couple of
+hundred megabytes, as bytes about a tenth of that, and it never has to be
+copied out.
 
 ## What is next
 
-1. Renumber phase 1 to R/L, so the chain matches without translation.
-2. Phase 2: the `rl` and `ct` coordinates, their move tables, the six goals.
-3. Phase 3 centres: 29,400 states, 20 moves.
-4. Phase 3 edges: 31M states at two bits. `CubeSolvers.Distances` returns
-   `Vector[Int32]`, which would be 124MB here, so it needs a byte-wide or
-   packed variant first.
-5. The driver: phase 1 solutions feed phase 2, phase 2 feeds phase 3, and the
+1. Fold the wing parity into phase 2's coordinate, which trebles nothing --
+   it doubles 900,900 to 1,801,800 -- and needs the corner permutation's
+   parity to say which value is the goal.
+2. Phase 3 edges: the placement of four paired edges at BR, BL, FL and FR
+   against the arrangement of the other eight. 31M states, written with
+   `bytesInto`.
+3. The driver: phase 1 solutions feed phase 2, phase 2 feeds phase 3, and the
    result goes to `CubeSolvers.Rubik`. TPR tries 10,000 phase-1 solutions, 500
    phase-2 attempts and 100 phase-3 attempts to reach its average.
