@@ -93,9 +93,18 @@ mod CubeSolvers.Revenge.Pairs {
     ///
     pub def isSeparated(cube: Facelets): Bool =
         let who = identity(cube);
-        let first = firstOrbit();
-        sides() |> Vector.forAll(match (x, y) ->
-            Set.memberOf(Vector.get(x, who), first) != Set.memberOf(Vector.get(y, who), first))
+        let home = homePlace();
+        let places = firstOrbit()
+            |> Set.toList
+            |> List.map(position -> Vector.get(Vector.get(position, who), home));
+        // Twelve positions, twelve different places: no place may have both
+        // its wings on the same side of the split, or the pairing is not a
+        // permutation and the third phase has nothing to walk.
+        let distinct = List.length(List.distinct(places));
+        let crossed = firstOrbit()
+            |> Set.toList
+            |> List.count(position -> not Set.memberOf(Vector.get(position, who), firstOrbit()));
+        distinct == 12 and crossed `Int32.modulo` 2 == 0
 
     ///
     /// How far each place is from holding a matching pair.

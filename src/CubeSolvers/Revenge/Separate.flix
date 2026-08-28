@@ -193,6 +193,120 @@ mod CubeSolvers.Revenge.Separate {
         sideGoals() |> Vector.map(s -> (outerSolved() * sideCount() + s) * 2)
 
     ///
+    /// The move tables, built once and handed to whatever walks them.
+    ///
+    pub type alias Steps = {
+        outer = Vector[Vector[Int32]],
+        side = Vector[Vector[Int32]],
+        flips = Vector[Int32],
+        binoms = Vector[Vector[Int32]]
+    }
+
+    ///
+    /// Builds them.
+    ///
+    pub def steps(): Steps =
+        { outer = outerMoves(), side = sideMoves(), flips = flips(), binoms = binomials() }
+
+    ///
+    /// Where move `m` takes state `at`.
+    ///
+    pub def after(t: Steps, at: Int32, m: Int32): Int32 =
+        let outerAt = at / (sideCount() * 2);
+        let sideAt = (at / 2) `Int32.modulo` sideCount();
+        let parityAt = at `Int32.modulo` 2;
+        let outerTo = Vector.get(m, neighbours(t#binoms, t#outer, 16, 8, outerAt));
+        let sideTo = Vector.get(m, neighbours(t#binoms, t#side, 8, 4, sideAt));
+        (outerTo * sideCount() + sideTo) * 2 + ((parityAt + Vector.get(m, t#flips)) `Int32.modulo` 2)
+
+    ///
+    /// Up to `cap` different solutions of exactly `depth` moves, as move
+    /// numbers.
+    ///
+    /// One solution is not enough here. The third phase needs the wings split
+    /// between its two orbits, and the second phase does not promise that --
+    /// it is a property of the answer, so the answers have to be sifted.
+    ///
+    pub def manyExactly(
+        t: Steps,
+        dist: Vector[Int32],
+        at: Int32,
+        depth: Int32,
+        cap: Int32
+    ): List[List[Int32]] =
+        collect(t, dist, at, depth, -1, cap)
+
+    ///
+    /// Every solution of exactly `depth` moves from here, up to `cap`.
+    ///
+    def collect(
+        t: Steps,
+        dist: Vector[Int32],
+        at: Int32,
+        depth: Int32,
+        last: Int32,
+        cap: Int32
+    ): List[List[Int32]] =
+        let lower = Vector.get(at, dist);
+        if (lower > depth or cap <= 0 or lower < 0)
+            Nil
+        else if (depth == 0)
+            if (lower == 0) (Nil :: Nil) else Nil
+        else
+            List.range(0, Vector.length(moves()))
+                |> List.filter(m -> allowed(m, last))
+                |> List.foldLeft(acc -> m ->
+                    let room = cap - List.length(acc);
+                    if (room <= 0)
+                        acc
+                    else
+                        let deeper = collect(t, dist, after(t, at, m), depth - 1, m, room);
+                        acc ::: List.map(rest -> m :: rest, deeper),
+                    Nil)
+
+    ///
+    /// Whether move `m` may follow move `last`.
+    ///
+    /// Two turns of one face in a row are one turn or none. Opposite faces
+    /// commute, so only one of the two orders is searched.
+    ///
+    def allowed(m: Int32, last: Int32): Bool =
+        if (last < 0)
+            true
+        else
+            let f = faceNumberOf(m);
+            let g = faceNumberOf(last);
+            if (f == g)
+                Vector.get(m, depths()) != Vector.get(last, depths())
+            else if (f == (g + 3) `Int32.modulo` 6)
+                f > g
+            else
+                true
+
+    ///
+    /// Which face each move turns, as a number.
+    ///
+    def faceNumberOf(m: Int32): Int32 = match CubeSolvers.face(Vector.get(m, moves())) {
+        case Face.U => 0
+        case Face.R => 1
+        case Face.F => 2
+        case Face.D => 3
+        case Face.L => 4
+        case _      => 5
+    }
+
+    ///
+    /// How deep each move cuts.
+    ///
+    def depths(): Vector[Int32] = moves() |> Vector.map(CubeSolvers.depth)
+
+    ///
+    /// The moves a list of move numbers stands for.
+    ///
+    pub def sequence(chosen: List[Int32]): CubeSolvers.MoveSequence =
+        chosen |> List.map(m -> Vector.get(m, moves()))
+
+    ///
     /// The exact number of moves each state is from the nearest finish.
     ///
     pub def table(): Vector[Int32] =
