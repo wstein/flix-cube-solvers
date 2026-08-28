@@ -14,7 +14,7 @@ mod TestPocketScramble {
         Assert.assertEq(expected = 0,
             CubeSolvers.Pocket.twist(state)
                 |> Vector.foldLeft((sum, t) -> sum + t, 0)
-                |> Int32.modulo(3))
+                |> (sum -> Int32.modulo(sum, 3)))
 
     @Test
     def aWcaScrambleIsShortestAndNeverTooEasy(): Unit \ Assert =

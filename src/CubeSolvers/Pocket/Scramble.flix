@@ -28,7 +28,7 @@ mod CubeSolvers.Pocket.Scramble {
     /// deliberately does not claim that a caller's seed is unpredictable.
     ///
     pub def sample(seed: Int64): (State, Int64) =
-        let (permutation, afterPermutation) = shuffled(seed, List.range(0, 7), Nil);
+        let (permutation, afterPermutation) = shuffled(seed, mobileCorners(), Nil);
         let (twists, afterTwists) = randomTwists(afterPermutation, 6, Nil, 0);
         (State.State(insertPinned(permutation, 6) |> List.toVector,
                      insertPinned(twists, 0) |> List.toVector), afterTwists)
@@ -115,6 +115,15 @@ mod CubeSolvers.Pocket.Scramble {
             (Int64.tryToInt32(Int64.modulo(candidate, width)) |> Option.getWithDefault(0), after)
         else
             draw(after, bound)
+
+    /// The seven corners that move, which is every corner but the pinned one.
+    ///
+    /// DBL sits at index six and is held still, so it is not shuffled -- it is
+    /// put back afterwards by `insertPinned`. Shuffling `0` through `6` would
+    /// deal that corner twice and corner seven never, and the result is not a
+    /// cube at all: it fails to decode, and a sampler that retries until it
+    /// decodes never returns.
+    def mobileCorners(): List[Int32] = List.range(0, 6) ::: 7 :: Nil
 
     /// A Fisher-Yates shuffle, expressed by repeatedly selecting one item.
     def shuffled(seed: Int64, remaining: List[Int32], done: List[Int32]): (List[Int32], Int64) =
