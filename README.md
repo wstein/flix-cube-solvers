@@ -36,6 +36,7 @@ Early, but the whole path works: stickers in, cubies, table, search, moves out.
 | `CubeSolvers.Rubik.Engine` | A prepared 3x3 solver; the second `Solver` instance | Done |
 | `CubeSolvers.Revenge.Centers` | Tsai's first phase: R and L colours onto R and L | Done |
 | `CubeSolvers.Revenge.Separate` | Tsai's second phase: the other centres, and where R/L may stop | Done |
+| `CubeSolvers.Revenge.Reduce` | Tsai's third phase, centres half: 58,800 states | Done |
 | `CubeSolvers.Revenge.Wings` | The 4x4 wings: which stickers are one piece, which pairs share a place | Done |
 | `CubeSolvers.Revenge.Walk` | Walking a phase downhill through its table | Done |
 | — | 4x4 edge pairing, then the 3x3 finish and its parities | **In progress** |
@@ -57,7 +58,7 @@ different levels:
 ## Quick start
 
 ```sh
-./flixw test         # 87 tests, about 16s: the tables are built and checked
+./flixw test         # 88 tests, about 14s: the tables are built and checked
 ./flixw check        # type-check; the fast loop
 ./flixw format       # reformat in place before committing
 ```
@@ -309,11 +310,14 @@ for the whole chain.
 | --- | --- | --- | --- | --- |
 | 1 | R and L colours onto R and L | 36 | 735,471 | 8 |
 | 2 | U/D and F/B centres home, R/L left finishable | 28 | 900,900 | 9 |
-| 3 | centres solved and edges paired | 20 | 29,400 and 31M | — |
+| 3, centres | the centres finished | 20 | 58,800 | 9 |
+| 3, edges | the edges paired | 20 | 31M | not built |
 
-Both tables are complete: every state reaches a goal, which is what makes the
+Every table is complete — each state reaches a goal — which is what makes the
 walk down them a solution rather than an attempt. On the three shared 4x4
-vectors the two phases together take 10, 10 and 13 moves.
+vectors the first two phases take 10, 10 and 13 moves, and the third finishes
+the centres: a test counts the stray centre stickers afterwards and finds
+none.
 
 Tsai's second step leaves the R and L centres "in one of 12 positions that can
 be solved in later steps". Twelve is not written down here. An arrangement
@@ -321,10 +325,12 @@ qualifies exactly when the third phase's moves can still carry it home, so it
 is found by walking those moves from solved — and twelve is what comes back,
 which is a pleasant way to be told the reading was right.
 
-What is not yet built is the third phase, where the edges are paired. It is
-much the largest: 31 million states at two bits each, which is where TPR's
-20MB of tables mostly goes, and which needs a byte-wide table type before it
-can be built at all.
+What is left is the edges. They are paired in the third phase, against a table
+of 31 million states at two bits each — where TPR's 20MB mostly goes, and
+which needs a byte-wide table type before it can be built at all. Its shape is
+Tsai's: four paired edges placed at BR, BL, FL and FR (11,880 placements,
+1,538 after symmetry), against the arrangement of the remaining eight
+(20,160).
 
 ## Depending on it
 

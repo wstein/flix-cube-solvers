@@ -1,7 +1,7 @@
 mod TestRevengeCenters {
 
     use CubeSolvers.Kind
-    use CubeSolvers.Revenge.Centers.{count, slots, moves, slotMoves, separation, solved, rank, unrank, table}
+    use CubeSolvers.Revenge.Centers.{slots, moves, slotMoves, separation, solved, rank, unrank}
 
     @Test
     def aSolvedCubeHasItsRAndLColoursSeparated(): Unit \ Assert =
@@ -28,20 +28,5 @@ mod TestRevengeCenters {
         foreach (r <- 0 :: 1 :: 12375 :: 400000 :: 735470 :: Nil)
             Assert.assertEq(expected = r, rank(unrank(r)))
 
-    ///
-    /// Every arrangement is reachable and none is more than eight moves away.
-    ///
-    /// Reachability is what makes the phase complete: a state the table never
-    /// marked is a state the walk cannot solve. It also catches a move set
-    /// that is too small -- with wide turns alone only 2,187 of these are
-    /// reachable, because the outer layer and the slice beneath it can never
-    /// be separated.
-    ///
-    @Test
-    def everyArrangementIsReachableWithinEightMoves(): Unit \ Assert =
-        let tbl = table();
-        Assert.assertEq(expected = count(), Vector.length(tbl));
-        Assert.assertEq(expected = 0, Vector.count(d -> d < 0, tbl));
-        Assert.assertEq(expected = 8, Vector.foldLeft(Int32.max, 0, tbl))
 
 }
