@@ -117,11 +117,30 @@ Two consequences, both found the hard way:
 
 1. Enumerate phase-2 solutions rather than walking one, and keep those that
    separate the wings. The 3x3's `manyExactly` is the shape to copy.
-2. Phase 3's edge tables. The exact 12!/2 distance is 239.5M states, which TPR
-   folds to 31M with eight symmetries. Projections are cheaper and need no
-   symmetry code: where four places map to is 11,880 states, and three such
-   tables taken together prune admissibly. Worth measuring before writing the
-   symmetry machinery.
+2. Phase 3's edge tables. Measured, and the cheap routes are closed:
+
+   **Projections do not work.** A move acts on the pairing permutation as
+   `R -> b . R . a'`, where `a` and `b` are its actions on the two wing
+   orbits. That relabels the domain *and* the codomain, so "where do these
+   four places go" is not closed under the moves and cannot be a coordinate.
+   Tracking `L` or `H` alone is closed -- the positions holding a fixed set of
+   pieces transform by `a` -- but neither says anything about `R = H' . L`,
+   which is the only thing the phase is trying to fix.
+
+   **A table-free heuristic is far too weak.** The most a single phase-3 move
+   was seen to improve the pairing, over 1,200 tries on 60 states, is four
+   places. So `ceil(unpaired / 4)` is admissible and gives at most 3 for a
+   fully unpaired cube, against phase-3 solutions of ten to fifteen moves.
+   With twenty moves branching, that prunes nothing.
+
+   **The exact table does not fit.** 12!/2 is 239,500,800 states: 239MB as
+   bytes is affordable, but the two frontier arrays are Int32 and come to
+   1.9GB, and the build is 4.8 billion transitions -- half an hour at the
+   rate measured here.
+
+   So this needs what TPR uses: eight symmetries folding 239.5M to 31M. That
+   is the single largest remaining piece of work, and there is no shortcut
+   around it.
 3. The search that uses them: the centre table and the edge tables together,
    as the 3x3 already does with its two.
 4. The driver: phase-1 solutions feed phase 2, phase 2 feeds phase 3, and the
