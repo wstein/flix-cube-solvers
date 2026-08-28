@@ -27,6 +27,7 @@ Early, but the whole path works: stickers in, cubies, table, search, moves out.
 | `CubeSolvers.Pocket.Stickers` | Cubies to facelets and back | Done |
 | `CubeSolvers.Pocket.Search` | Datalog distance table, and shortest solutions from it | Done |
 | `CubeSolvers.Pocket.Engine` | A prepared solver; the first `Solver` instance | Done |
+| `CubeSolvers.Pocket.Scramble` | Seeded uniform 2x2 random-state scrambles, with certified shortest length | Done |
 | `CubeSolvers.Rubik` | The 3x3x3 as cubies: corners, edges, twists, flips, all six faces | Done |
 | `CubeSolvers.Rubik.Stickers` | 54 stickers to cubies and back, with the three laws | Done |
 | `CubeSolvers.Rubik.Coordinate` | Twist, flip and slice as numbers, and the tables moves walk them through | Done |
@@ -34,6 +35,7 @@ Early, but the whole path works: stickers in, cubies, table, search, moves out.
 | `CubeSolvers.Rubik.Reduce` | The search into the subgroup no side quarter turn is needed from | Done |
 | `CubeSolvers.Rubik.Finish` | The finish, using only U, D and half turns | Done |
 | `CubeSolvers.Rubik.Engine` | A prepared 3x3 solver; the second `Solver` instance | Done |
+| `CubeSolvers.Rubik.Scramble` | Secure 3x3 random-state scrambles (not optimal-length) | Done |
 | `CubeSolvers.Revenge.Centers` | Tsai's first phase: R and L colours onto R and L | Done |
 | `CubeSolvers.Revenge.Separate` | Tsai's second phase: the other centres, and where R/L may stop | Done |
 | `CubeSolvers.Revenge.Reduce` | Tsai's third phase, centres half: 58,800 states | Done |
@@ -123,6 +125,54 @@ match CubeSolvers.Solver.facelets(CubeSolvers.Kind.Cube2x2, stickers) {
         //=> Solved(R :: F2 :: U :: R' :: Nil)
 }
 ```
+
+## 2x2 random-state scrambles
+
+`CubeSolvers.Pocket.Scramble.wca` produces a reproducible 2x2 scramble from a
+caller-provided seed. It samples uniformly from the fixed-corner state space,
+rejects states solvable in fewer than four moves, and returns the reverse of
+the exact solver's shortest route. The output is therefore guaranteed to be a
+shortest scramble for its resulting state.
+
+```flix
+let engine = CubeSolvers.Pocket.Engine.standard();
+let (scramble, nextSeed) = CubeSolvers.Pocket.Scramble.wca(engine, 42i64);
+CubeSolvers.render(scramble)
+```
+
+This matches the WCA's *random-state and minimum-distance* requirement for
+2x2, but it is not an official WCA scramble program. Official competitions
+must use the current TNoodle release.
+
+For deliberately easier practice, choose an exact proven distance, or have
+the library choose uniformly from three, four, and five moves:
+
+```flix
+let (scramble, nextSeed) = CubeSolvers.Pocket.Scramble.easy(42i64);
+// `List.length(scramble)` is exactly 3, 4, or 5 -- never just a literal count.
+```
+
+For actual use, prefer entropy from `SecureRandom` rather than choosing a
+seed yourself:
+
+```flix
+let scramble = CubeSolvers.Pocket.Scramble.secureEasy(); // \ IO
+```
+
+## 3x3 random-state scrambles
+
+`CubeSolvers.Rubik.Scramble.secure` samples a legal 3x3 state with
+`SecureRandom`, rejects the solved and one-move states, and uses the prepared
+two-phase engine to render a sequence that reaches it:
+
+```flix
+let engine = CubeSolvers.Rubik.Engine.prepared();
+let scramble = CubeSolvers.Rubik.Scramble.secure(engine); // \ IO
+```
+
+The *state* distribution fulfils the WCA minimum-distance rule, but the 3x3
+engine is deliberately not optimal, so its printed sequence is not certified
+shortest. As with 2x2, official WCA competitions must use TNoodle.
 
 ## The model
 
