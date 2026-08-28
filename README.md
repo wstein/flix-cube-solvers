@@ -37,7 +37,8 @@ Early, but the whole path works: stickers in, cubies, table, search, moves out.
 | `CubeSolvers.Revenge.Centers` | Tsai's first phase: R and L colours onto R and L | Done |
 | `CubeSolvers.Revenge.Separate` | Tsai's second phase: the other centres, and where R/L may stop | Done |
 | `CubeSolvers.Revenge.Reduce` | Tsai's third phase, centres half: 58,800 states | Done |
-| `CubeSolvers.Revenge.Wings` | The 4x4 wings: which stickers are one piece, which pairs share a place | Done |
+| `CubeSolvers.Revenge.Wings` | The 4x4 wings: which piece is where, and the permutation's parity | Done |
+| `CubeSolvers.Revenge.Corners` | The 4x4 corners, for their permutation's parity | Done |
 | `CubeSolvers.Revenge.Walk` | Walking a phase downhill through its table | Done |
 | — | 4x4 edge pairing, then the 3x3 finish and its parities | **In progress** |
 | — | The 5x5 | Not started |
@@ -58,7 +59,7 @@ different levels:
 ## Quick start
 
 ```sh
-./flixw test         # 88 tests, about 14s: the tables are built and checked
+./flixw test         # 92 tests, about 17s: the tables are built and checked
 ./flixw check        # type-check; the fast loop
 ./flixw format       # reformat in place before committing
 ```
@@ -309,8 +310,8 @@ for the whole chain.
 | Phase | Goal | Moves | States | Deepest |
 | --- | --- | --- | --- | --- |
 | 1 | R and L colours onto R and L | 36 | 735,471 | 8 |
-| 2 | U/D and F/B centres home, R/L left finishable | 28 | 900,900 | 9 |
-| 3, centres | the centres finished | 20 | 58,800 | 9 |
+| 2 | U/D and F/B centres home, R/L left finishable, parities matched | 28 | 1,801,800 | 9 |
+| 3, centres | the centres finished, parities still matched | 20 | 117,600 | 10 |
 | 3, edges | the edges paired | 20 | 31M | not built |
 
 Every table is complete — each state reaches a goal — which is what makes the
@@ -318,6 +319,13 @@ walk down them a solution rather than an attempt. On the three shared 4x4
 vectors the first two phases take 10, 10 and 13 moves, and the third finishes
 the centres: a test counts the stray centre stickers afterwards and finds
 none.
+
+A reduced 4x4 can show a position no 3x3 ever does — two edges swapped and
+nothing else wrong — and what rules it out is the edge permutation's parity
+agreeing with the corners'. Both phases carry that agreement as a single bit.
+The second establishes it; the third has to restore it, because it may turn F,
+B, U and D a quarter and a quarter turn is odd on corners and even on wings.
+One cube in three pays a move for it.
 
 Tsai's second step leaves the R and L centres "in one of 12 positions that can
 be solved in later steps". Twelve is not written down here. An arrangement

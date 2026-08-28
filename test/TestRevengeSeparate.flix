@@ -19,7 +19,19 @@ mod TestRevengeSeparate {
     def aSolvedCubeIsAtTheGoal(): Unit \ Assert =
         let cube = CubeSolvers.Solver.solved(Kind.Cube4x4);
         Assert.assertEq(expected = outerSolved(), outer(cube));
-        Assert.assertEq(expected = sideSolved(), side(cube))
+        Assert.assertEq(expected = sideSolved(), side(cube));
+        Assert.assertEq(expected = 0, CubeSolvers.Revenge.Separate.mismatch(cube))
+
+    ///
+    /// An outer quarter turn is a four-cycle of corners and two four-cycles
+    /// of wings: odd against even, so it flips the agreement between them. A
+    /// half turn and a wide turn do not.
+    ///
+    @Test
+    def onlyOuterQuarterTurnsFlipTheParityMismatch(): Unit \ Assert =
+        let flipped = CubeSolvers.Revenge.Separate.flips();
+        Assert.assertEq(expected = 28, Vector.length(flipped));
+        Assert.assertEq(expected = 12, Vector.sum(flipped))
 
     ///
     /// Tsai's second step leaves the R and L centres "in one of 12 positions

@@ -32,7 +32,10 @@ mod CubeSolvers.Revenge.Separate {
     ///
     /// How many states this phase distinguishes.
     ///
-    pub def count(): Int32 = outerCount() * sideCount()
+    /// The centres, times the R and L arrangements, times one bit: whether
+    /// the edge permutation's parity matches the corners'.
+    ///
+    pub def count(): Int32 = outerCount() * sideCount() * 2
 
     ///
     /// The twenty-eight moves this phase may use.
@@ -93,9 +96,35 @@ mod CubeSolvers.Revenge.Separate {
             |> Vector.filter(i -> i >= 0))
 
     ///
-    /// Both together, as one number.
+    /// Whether the edge and corner permutations disagree about parity.
     ///
-    pub def coordinate(cube: Facelets): Int32 = outer(cube) * sideCount() + side(cube)
+    /// A reduced 4x4 can show a position no 3x3 ever does -- two edges
+    /// swapped and nothing else wrong -- and this bit is what rules it out.
+    /// Tsai's second step has to leave it at zero, so it is carried as part
+    /// of the coordinate rather than checked afterwards.
+    ///
+    pub def mismatch(cube: Facelets): Int32 =
+        (CubeSolvers.Revenge.Wings.parity(cube) + CubeSolvers.Revenge.Corners.parity(cube)) `Int32.modulo` 2
+
+    ///
+    /// All three together, as one number.
+    ///
+    pub def coordinate(cube: Facelets): Int32 =
+        (outer(cube) * sideCount() + side(cube)) * 2 + mismatch(cube)
+
+    ///
+    /// Whether each move flips the parity mismatch.
+    ///
+    /// A move's own permutation is what a solved cube shows after it, so
+    /// this asks each move what it does and remembers the answer.
+    ///
+    pub def flips(): Vector[Int32] =
+        let solvedCube = CubeSolvers.Solver.solved(Kind.Cube4x4);
+        moves() |> Vector.map(m ->
+            match CubeSolvers.Turning.apply(solvedCube, m) {
+                case Err(_)    => 0
+                case Ok(after) => mismatch(after)
+            })
 
     ///
     /// Where each of the sixteen outer slots goes, for each move.
@@ -161,7 +190,7 @@ mod CubeSolvers.Revenge.Separate {
     /// Every state this phase counts as finished.
     ///
     pub def goals(): Vector[Int32] =
-        sideGoals() |> Vector.map(s -> outerSolved() * sideCount() + s)
+        sideGoals() |> Vector.map(s -> (outerSolved() * sideCount() + s) * 2)
 
     ///
     /// The exact number of moves each state is from the nearest finish.
@@ -170,13 +199,16 @@ mod CubeSolvers.Revenge.Separate {
         let binoms = binomials();
         let outerSteps = outerMoves();
         let sideSteps = sideMoves();
+        let flipped = flips();
         CubeSolvers.Distances.ofMany(count(), goals(), at ->
-            let outerAt = at / sideCount();
-            let sideAt = at `Int32.modulo` sideCount();
+            let outerAt = at / (sideCount() * 2);
+            let sideAt = (at / 2) `Int32.modulo` sideCount();
+            let parityAt = at `Int32.modulo` 2;
             let outerTo = neighbours(binoms, outerSteps, 16, 8, outerAt);
             let sideTo = neighbours(binoms, sideSteps, 8, 4, sideAt);
             Vector.range(0, Vector.length(outerTo)) |> Vector.map(m ->
-                Vector.get(m, outerTo) * sideCount() + Vector.get(m, sideTo)))
+                (Vector.get(m, outerTo) * sideCount() + Vector.get(m, sideTo)) * 2
+                    + ((parityAt + Vector.get(m, flipped)) `Int32.modulo` 2)))
 
     ///
     /// Where each slot of a group goes, for each of the given moves.

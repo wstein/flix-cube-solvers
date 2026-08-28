@@ -35,8 +35,9 @@ mod TestRevengeReduce {
 
     ///
     /// The three phases together must leave every centre sticker on its own
-    /// face -- checked by counting stickers rather than by asking the tables
-    /// that produced the moves.
+    /// face, and the edge and corner permutations agreeing about parity --
+    /// checked by counting stickers and permutations rather than by asking
+    /// the tables that produced the moves.
     ///
     @Test
     def theThreePhasesSolveTheCentres(): Unit \ Assert =
@@ -53,13 +54,20 @@ mod TestRevengeReduce {
         Assert.assertEq(expected = 9, Vector.foldLeft(Int32.max, 0, two));
         Assert.assertEq(expected = count(), Vector.length(three));
         Assert.assertEq(expected = 0, Vector.count(d -> d < 0, three));
-        Assert.assertEq(expected = 9, Vector.foldLeft(Int32.max, 0, three));
+        // Ten rather than nine: carrying the parity bit adds a level, which
+        // is the move a cube pays to put the two permutations back in step.
+        Assert.assertEq(expected = 10, Vector.foldLeft(Int32.max, 0, three));
         foreach (text <- scrambles()) {
             match scrambled(text) {
                 case None       => Assert.assertEq(expected = "a cube", "unparsed: ${text}")
                 case Some(cube) => match centres(cube, one, two, three) {
                     case Err(why)  => Assert.assertEq(expected = "a reduction", "${why}")
-                    case Ok(after) => Assert.assertEq(expected = 0, strayCentres(after))
+                    case Ok(after) =>
+                        Assert.assertEq(expected = 0, strayCentres(after));
+                        // The edge and corner permutations must still agree:
+                        // a quarter turn of F, B, U or D flips that, and this
+                        // phase is allowed those turns.
+                        Assert.assertEq(expected = 0, Separate.mismatch(after))
                 }
             }
         }

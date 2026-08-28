@@ -29,7 +29,12 @@ mod CubeSolvers.Revenge.Reduce {
     ///
     /// How many states this phase's centres have.
     ///
-    pub def count(): Int32 = pairCount() * pairCount() * sideCount()
+    /// Times two, for the parity bit. This phase may turn F, B, U and D a
+    /// quarter, and a quarter turn flips the agreement between the edge and
+    /// corner permutations that the second phase established. Carrying the
+    /// bit here is what makes the phase put it back.
+    ///
+    pub def count(): Int32 = pairCount() * pairCount() * sideCount() * 2
 
     ///
     /// The twenty moves this phase may use.
@@ -87,7 +92,8 @@ mod CubeSolvers.Revenge.Reduce {
     /// All three, as one number.
     ///
     pub def coordinate(cube: Facelets): Int32 =
-        (up(cube) * pairCount() + front(cube)) * sideCount() + sideIndex(cube)
+        ((up(cube) * pairCount() + front(cube)) * sideCount() + sideIndex(cube)) * 2
+            + CubeSolvers.Revenge.Separate.mismatch(cube)
 
     ///
     /// The number a solved cube's centres have.
@@ -98,7 +104,7 @@ mod CubeSolvers.Revenge.Reduce {
             case Some(i) => i
             case None    => 0
         };
-        (home * pairCount() + home) * sideCount() + atSolved
+        ((home * pairCount() + home) * sideCount() + atSolved) * 2
 
     ///
     /// Where each slot of a group goes, for each of this phase's moves.
@@ -141,14 +147,28 @@ mod CubeSolvers.Revenge.Reduce {
         let upSteps = group(upSlots());
         let frontSteps = group(frontSlots());
         let sideSteps = sideMoves();
+        let flipped = flips();
         CubeSolvers.Distances.of(count(), solved(), at ->
-            let upAt = at / (pairCount() * sideCount());
-            let frontAt = (at / sideCount()) `Int32.modulo` pairCount();
-            let sideAt = at `Int32.modulo` sideCount();
+            let upAt = at / (pairCount() * sideCount() * 2);
+            let frontAt = (at / (sideCount() * 2)) `Int32.modulo` pairCount();
+            let sideAt = (at / 2) `Int32.modulo` sideCount();
+            let parityAt = at `Int32.modulo` 2;
             let upTo = neighbours(binoms, upSteps, 8, 4, upAt);
             let frontTo = neighbours(binoms, frontSteps, 8, 4, frontAt);
             Vector.range(0, Vector.length(upTo)) |> Vector.map(m ->
-                (Vector.get(m, upTo) * pairCount() + Vector.get(m, frontTo)) * sideCount()
-                    + Vector.get(sideAt, Vector.get(m, sideSteps))))
+                ((Vector.get(m, upTo) * pairCount() + Vector.get(m, frontTo)) * sideCount()
+                    + Vector.get(sideAt, Vector.get(m, sideSteps))) * 2
+                    + ((parityAt + Vector.get(m, flipped)) `Int32.modulo` 2)))
+
+    ///
+    /// Whether each of this phase's moves flips the parity mismatch.
+    ///
+    pub def flips(): Vector[Int32] =
+        let solvedCube = CubeSolvers.Solver.solved(Kind.Cube4x4);
+        moves() |> Vector.map(m ->
+            match CubeSolvers.Turning.apply(solvedCube, m) {
+                case Err(_)    => 0
+                case Ok(after) => CubeSolvers.Revenge.Separate.mismatch(after)
+            })
 
 }
