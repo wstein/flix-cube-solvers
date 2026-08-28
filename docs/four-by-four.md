@@ -145,29 +145,31 @@ the twenty moves in the order the edge tables number them, the walk down the
 two-bit table to recover a true distance, and an iterative-deepening search
 bounded by the larger of the two.
 
-It does not work yet, and the fault is known and reproducible.
+It works. The fault it had is worth keeping written down, because it was the
+subtlest of the three false positives in this work.
 
-Tracking the edge index incrementally through a walk of 120 moves, and
-recomputing it from the cube at each step, the two agree until **step five,
-move ten** -- which is `L2`, an outer turn. An outer turn moves both wings of
-a place together and therefore leaves the pairing permutation alone, so
-`Edges.after` must return the index unchanged for it. It does not.
+The search carried the edge index along, updating it move by move. That is
+faster and wrong. A move sends the pairing permutation `std` to
+`b . std . a` -- a conjugation -- so a carried index tracks the pairing in a
+frame that the moves are themselves turning, while the cube's pairing is
+absolute. The two agree exactly when the cube is paired, and disagree in
+between:
 
-The false comfort to avoid here, for the third time in this work: testing
-transitions *from solved* proves nothing about outer moves, because they act
-trivially there on both sides. Only a walk that has already left the solved
-state can tell.
+    r2 r2        tracked 0          recomputed 0          paired
+    r2 U r2      tracked 22,484,305 recomputed 22,544,790 not paired
+    L2 r2 L2 r2  tracked 0          recomputed 0          paired
 
-What the search does get right, on cubes scrambled within the phase: the
-centres come out solved every time. It is the edge half that goes wrong, and
-the reported solutions leave the pairing incomplete -- 9 of 12, 7 of 12 --
-while the search believes it has finished.
+So the goal test fired on cubes that were not paired, and the search returned
+confident wrong answers: solutions that left 7 or 9 of the 12 places unpaired
+while reporting success. Reading the index from the cube at every node costs
+more and is right.
 
-So the next step is to find why `after` disagrees with recomputation for an
-outer turn from a non-identity state. The suspects, in order: `moveRotations`
-composing the move and rotation tables differently from the reference's
-`initMvrot`, and `rankThroughArray` reading `forward` and `back` in the wrong
-order.
+On cubes scrambled within the phase, it now finishes the centres and pairs
+every edge: three cubes scrambled 3, 5 and 7 moves deep came back in 2, 3 and
+6 moves, each with twelve places paired and the centres home.
+
+Building the tables costs about eighty seconds, so the search is not in the
+test suite -- the same decision as the table itself.
 
 ## What is next
 

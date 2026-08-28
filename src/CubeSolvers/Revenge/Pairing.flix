@@ -109,28 +109,29 @@ mod CubeSolvers.Revenge.Pairing {
     /// `limit`.
     ///
     pub def solution(t: Tables[r], cube: Facelets, limit: Int32): Option[MoveSequence] \ r =
-        let edgeIndex = Edges.indexOf(t#classes, CubeSolvers.Revenge.Pairs.asEdgeState(cube));
-        let start = edgeDistance(t, edgeIndex);
-        List.range(0, limit + 1) |> List.findMap(depth ->
-            walk(t, cube, edgeIndex, start, depth, -1))
+        List.range(0, limit + 1) |> List.findMap(depth -> walk(t, cube, depth, -1))
 
     ///
     /// Depth-first to exactly `depth` moves, pruned by both tables.
     ///
-    def walk(
-        t: Tables[r],
-        cube: Facelets,
-        edgeIndex: Int32,
-        edgeDepth: Int32,
-        depth: Int32,
-        last: Int32
-    ): Option[MoveSequence] \ r =
+    /// Depth-first to exactly `depth` moves, pruned by both tables.
+    ///
+    /// The edge index is read from the cube at every node rather than carried
+    /// along. Carrying it is faster and wrong: a move sends the pairing to
+    /// `b . std . a`, a conjugation, so a carried index tracks the pairing in
+    /// a frame that the moves themselves are turning. The two agree when the
+    /// cube is paired and disagree in between, which is exactly the shape of
+    /// bug that returns a confident wrong answer.
+    def walk(t: Tables[r], cube: Facelets, depth: Int32, last: Int32): Option[MoveSequence] \ r =
         let centreDepth = Vector.get(Reduce.coordinate(cube), t#centres);
+        let edgeIndex = Edges.indexOf(t#classes, CubeSolvers.Revenge.Pairs.asEdgeState(cube));
         if (centreDepth < 0)
             None
-        else if (centreDepth == 0 and edgeIndex == 0 and depth == 0)
-            Some(Nil)
-        else if (Int32.max(centreDepth, edgeDepth) > depth)
+        else if (centreDepth == 0 and edgeIndex == 0)
+            if (depth == 0) Some(Nil) else None
+        else if (depth == 0)
+            None
+        else if (Int32.max(centreDepth, edgeDistance(t, edgeIndex)) > depth)
             None
         else
             List.range(0, Vector.length(moves()))
@@ -139,20 +140,9 @@ mod CubeSolvers.Revenge.Pairing {
                     match CubeSolvers.Turning.apply(cube, Vector.get(m, moves())) {
                         case Err(_)   => None
                         case Ok(next) =>
-                            let toIndex = Edges.after(t#classes, t#rotations, t#scratch, edgeIndex, m);
-                            let toDepth = stepped(Edges.get(t#edges, toIndex), edgeDepth);
-                            walk(t, next, toIndex, toDepth, depth - 1, m)
+                            walk(t, next, depth - 1, m)
                                 |> Option.map(rest -> Vector.get(m, moves()) :: rest)
                     })
-
-    ///
-    /// The neighbour's true distance, from its two stored bits and this one's.
-    ///
-    /// A neighbour is one nearer, level, or one further, and the stored value
-    /// modulo three says which.
-    ///
-    def stepped(stored: Int32, here: Int32): Int32 =
-        ((stored - here + 16) `Int32.modulo` 3) + here - 1
 
     ///
     /// Whether move `m` may follow move `last`.
