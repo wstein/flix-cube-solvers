@@ -133,6 +133,23 @@ mod CubeSolvers.Revenge.Pairing {
             walk(t, centre, pairing, edgeDepth, depth, -1))
 
     ///
+    /// How far this phase must go, at least.
+    ///
+    /// Both tables are exact, so neither can overstate the distance and the
+    /// larger of them is a bound. Worth asking before searching: a candidate
+    /// whose bound already exceeds the budget cannot be finished within it,
+    /// and answering that costs two lookups instead of a search.
+    ///
+    pub def bound(t: Tables[r], cube: Facelets): Int32 \ r =
+        let centre = Reduce.coordinate(cube);
+        if (centre < 0)
+            -1
+        else
+            let pairing = CubeSolvers.Revenge.Pairs.relativeIn(t#layout, cube);
+            Int32.max(Vector.get(centre, t#centres),
+                      edgeDistance(t, edgeIndexOf(t, pairing)))
+
+    ///
     /// The pairing, as the edge table indexes it, without allocating a state
     /// for the symmetry rotation.
     ///

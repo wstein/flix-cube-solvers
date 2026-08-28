@@ -31,11 +31,13 @@ mod CubeSolvers.Revenge.Engine {
     ///
     /// How many second-phase answers to sift before giving up on a length.
     ///
-    /// About one in seven hundred separates the wings, so a few thousand is
-    /// the right order. The reference tries five hundred per first-phase
-    /// answer and ten thousand first-phase answers.
+    /// Measured, one in 459 of them separates the wings -- close to the
+    /// `2^12 / C(24, 12)` the geometry predicts. What matters more than the
+    /// count is that the answers be spread out: read in one fixed move order
+    /// they share prefixes, and share what happens to the wings along them.
+    /// The reference tries five hundred per first-phase answer.
     ///
-    pub def sifted(): Int32 = 3000
+    pub def sifted(): Int32 = 200
 
     ///
     /// How long a third phase may run to.
@@ -56,65 +58,124 @@ mod CubeSolvers.Revenge.Engine {
     ///
     /// The moves that solve a 4x4, or why they were not found.
     ///
+    /// Reduction is gathered first and searched second. Every first-phase
+    /// answer is taken through the second phase, and every second-phase answer
+    /// that leaves the wings separated is kept along with what the third phase
+    /// must at least cost from there. Only then is anything searched, cheapest
+    /// first -- because a third-phase search whose budget is too small still
+    /// walks the whole tree before saying so, and there is no point paying
+    /// that for a candidate a lookup has already ruled out.
+    ///
     pub def solution(t: Tables[r], cube: Facelets): Result[Invalid, MoveSequence] \ r =
-        forM (first <- Walk.down(cube, t#separating, Centers.separation, Centers.moves());
-              afterFirst <- CubeSolvers.Turning.replay(cube, first);
-              rest <- fromSettled(t, afterFirst))
-            yield CubeSolvers.simplify(first ::: rest)
+        match Walk.down(cube, t#separating, Centers.separation, Centers.moves()) {
+            case Err(e) => Err(e)
+            case Ok(_)  =>
+                let ready = gather(t, cube);
+                if (List.isEmpty(ready))
+                    Err(Invalid.Unsolvable("no reduction left the wings separated"))
+                else
+                    match tryEach(t, List.sortBy(match (v, _, _) -> v, ready), budget(ready)) {
+                        case Some(answer) => Ok(CubeSolvers.simplify(answer))
+                        case None         => Err(Invalid.Unsolvable(
+                            "the third phase could not finish any reduction"))
+                    }
+        }
 
     ///
-    /// The rest of the solve, from a cube whose R and L centres are separated.
+    /// How many first-phase answers to try.
     ///
-    def fromSettled(t: Tables[r], cube: Facelets): Result[Invalid, MoveSequence] \ r =
-        let at = Separate.coordinate(cube);
-        let shortest = Vector.get(at, t#settling);
-        if (shortest < 0)
-            Err(Invalid.Unsolvable("the second phase cannot settle this cube"))
-        else
-            match trySettling(t, cube, at, shortest, shortest + 4) {
-                case Some(moves) => Ok(moves)
-                case None        => Err(Invalid.Unsolvable("no second phase answer left the wings separated and finishable"))
-            }
+    /// Each one gives the wings a different history, which is what the sift
+    /// needs: answers sharing a prefix drag the wings along the same way, so
+    /// a single first-phase answer yields far fewer independent tries than
+    /// its second-phase answers suggest. The reference keeps five hundred.
+    ///
+    pub def firstAnswers(): Int32 = 60
 
     ///
-    /// Tries each second-phase length in turn, sifting its answers.
+    /// Every reduction worth searching: what it cost, where it leaves the
+    /// cube, and the least the third phase can add.
     ///
-    def trySettling(
+    def gather(t: Tables[r], cube: Facelets): List[(Int32, MoveSequence, Facelets)] \ r =
+        Walk.manyWith(cube, t#separating, Centers.separation, Centers.moves(), firstAnswers())
+            |> List.mapWithIndex(k -> pair -> (k, pair))
+            |> List.flatMap(match (k, (first, afterFirst)) -> {
+                let at = Separate.coordinate(afterFirst);
+                let shortest = Vector.get(at, t#settling);
+                if (shortest < 0)
+                    Nil
+                else
+                    List.range(0, slack() + 1) |> List.flatMap(extra ->
+                        Separate.manyExactlyFrom(t#steps, t#settling, at,
+                                shortest + extra, sifted(), k * 5 + extra)
+                            |> List.filterMap(answer -> {
+                                let second = Separate.sequence(answer);
+                                match CubeSolvers.Turning.replay(afterFirst, second) {
+                                    case Err(_)      => None
+                                    case Ok(settled) =>
+                                        if (not Pairs.isSeparatedIn(t#pairing#layout, settled))
+                                            None
+                                        else
+                                            let used = List.length(first) + List.length(second);
+                                            let least = Pairing.bound(t#pairing, settled);
+                                            if (least < 0)
+                                                None
+                                            else
+                                                Some((used + least, first ::: second, settled))
+                                }
+                            }))
+            })
+
+    ///
+    /// How many moves past the shortest the second phase may spend.
+    ///
+    def slack(): Int32 = 2
+
+    ///
+    /// The budget to start at: what the most promising reduction promises.
+    ///
+    def budget(ready: List[(Int32, MoveSequence, Facelets)]): Int32 =
+        ready |> List.map(match (v, _, _) -> v) |> List.minimum |> Option.getWithDefault(0)
+
+    ///
+    /// Searches the reductions within the budget, then widens it.
+    ///
+    def tryEach(
         t: Tables[r],
-        cube: Facelets,
-        at: Int32,
-        depth: Int32,
-        limit: Int32
+        ready: List[(Int32, MoveSequence, Facelets)],
+        allowed: Int32
     ): Option[MoveSequence] \ r =
-        if (depth > limit)
+        if (allowed > longest())
             None
         else
-            let answers = Separate.manyExactly(t#steps, t#settling, at, depth, sifted());
-            match List.findMap(answer -> finishFrom(t, cube, answer), answers) {
-                case Some(moves) => Some(moves)
-                case None        => trySettling(t, cube, at, depth + 1, limit)
+            let within = ready |> List.filter(match (v, _, _) -> v <= allowed);
+            match List.findMap(match (_, done, settled) ->
+                    finishFrom(t, done, settled, allowed - List.length(done)), within) {
+                case Some(answer) => Some(answer)
+                case None         => tryEach(t, ready, allowed + 1)
             }
+
+    ///
+    /// The longest reduction this engine will look for.
+    ///
+    def longest(): Int32 = 32
 
     ///
     /// One second-phase answer, taken through to the end if it separates the
     /// wings and the third phase can finish it.
     ///
-    def finishFrom(t: Tables[r], cube: Facelets, answer: List[Int32]): Option[MoveSequence] \ r =
-        let second = Separate.sequence(answer);
-        match CubeSolvers.Turning.replay(cube, second) {
-            case Err(_)       => None
-            case Ok(settled)  =>
-                if (not Pairs.isSeparatedIn(t#pairing#layout, settled))
-                    None
-                else
-                    match Pairing.solution(t#pairing, settled, deepestPairing()) {
-                        case None       => None
-                        case Some(third) => match CubeSolvers.Turning.replay(settled, third) {
-                            case Err(_)      => None
-                            case Ok(reduced) => finishAsRubik(t, reduced)
-                                |> Option.map(last -> second ::: third ::: last)
-                        }
-                    }
+    def finishFrom(
+        t: Tables[r],
+        done: MoveSequence,
+        settled: Facelets,
+        allowed: Int32
+    ): Option[MoveSequence] \ r =
+        match Pairing.solution(t#pairing, settled, Int32.min(allowed, deepestPairing())) {
+            case None        => None
+            case Some(third) => match CubeSolvers.Turning.replay(settled, third) {
+                case Err(_)      => None
+                case Ok(reduced) => finishAsRubik(t, reduced)
+                    |> Option.map(last -> done ::: third ::: last)
+            }
         }
 
     ///

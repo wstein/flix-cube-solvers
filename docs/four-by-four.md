@@ -171,7 +171,7 @@ every edge: three cubes scrambled 3, 5 and 7 moves deep came back in 2, 3 and
 Building the tables costs about eighty seconds, so the search is not in the
 test suite -- the same decision as the table itself.
 
-## The driver, and the one thing left
+## The driver
 
 `CubeSolvers.Revenge.Engine` chains all of it: phase one, then phase two's
 answers enumerated and sifted for wing separation, then phase three, then the
@@ -180,82 +180,80 @@ reads a reduced 4x4 as the 3x3 it has become. That last step is verified: a
 4x4 scrambled with outer turns only was read as a 3x3, solved in seven moves,
 and those moves solved the 4x4.
 
-Sifting is fast enough: 3,000 second-phase answers enumerate in 87ms and sift
-in 145ms, and sixteen of them separate the wings at depth six.
+It gathers before it searches. Every first-phase answer is taken through the
+second phase, every second-phase answer that separates the wings is kept along
+with what the third phase must at least cost from there, and only then is
+anything searched, cheapest first. This is the reference's shape: it sorts its
+hundred second-phase results by `length1 + length2 + max(edgePrun, ctPrun)`
+before trying any of them. The reason is in the measurements below -- a
+third-phase search whose budget is too small still walks the whole tree before
+saying so, so it is worth two table lookups to not start one.
 
-What is not fast enough is the third phase at the depth real cubes need. Its
-distance for a real candidate is eleven, and the answers are around thirteen;
-the search finds nothing at twelve in about a second per candidate, and does
-not finish at thirteen.
+## Sifting, and the trap in it
 
-The cost is per node, and the reason was the frame:
+Roughly one state in seven hundred separates the wings: the property picks one
+wing from each of twelve places, so `2^12 / C(24, 12)` is about `1/660`.
+Measured on states this phase actually produces, the rate is **1 in 459**.
 
-- The **centres** can be carried as a coordinate. Their slots do not move with
-  the cube, so `Reduce.after` is exact.
-- The **edges** cannot. A move conjugates the pairing permutation, so a
-  carried index tracks it in a frame the moves are turning. Its zero is not
-  the goal -- worse, it is never reached, so a search that trusts it finds
-  nothing at any depth. Reading the pairing from the cube each node is
-  correct, and costs ninety-six stickers turned plus a ranking.
+That rate is only available to *independent* tries, and enumerated answers are
+not independent. Answers come out in the order the moves are tried, so they
+share long prefixes -- and what happens to the wings along a shared prefix is
+shared with it. Read that way:
 
-The search now carries the pairing itself rather than the cube or the index.
-Every move acts on it as `R -> b . R . a`, where `a` and `b` are that move's
-permutations of the two wing orbits, both derived once. The inverse of `a` is
-cached with each move, so a transition is twelve lookups and the pairing stays
-absolute: `R = identity` is the goal.
+- 5,792 answers, off 60 different first-phase answers: **none** separated.
+- 29,352 answers, off the same 60, with the move order turned and two moves of
+  slack allowed: **64** separated.
 
-The edge-table lookup is also direct. The table folds eight cube symmetries,
-but rotating a standard pairing is fixed left/right composition on its twelve
-entries. The search ranks that composition through precomputed maps rather
-than allocating and rotating an `Edges.State` at every child. The direct path
-is checked against the original State-based indexing across all 11,880 first
-coordinate arrangements. This removes the known allocation bottleneck; a
-real-cube depth-13 timing remains the acceptance measurement for the complete
-4x4 solver.
+Same phase, same predicate, same cube. The first number cost most of a day to
+explain, because every part of it looks like a bug: the predicate was checked
+against the reference's `checkEdge`, the numbering against the cube, and the
+coordinate against the cube move by move -- all correct. The enumeration was
+the problem. `Separate.manyExactlyFrom` and `Walk.manyWith` exist for this.
+
+## The split as a bound, which did not pay
+
+`CubeSolvers.Revenge.Orbits` makes the split a coordinate rather than a sift:
+which twelve of the twenty-four slots hold a first-orbit wing, `C(24, 12)` =
+2,704,156 states, complete in 32 seconds, deepest 8. Every transition is
+checked against the cube, and reaching its goal implies the separation the
+third phase needs.
+
+It is not what the driver uses. Searching the second phase under both bounds
+at once -- the larger of the settling distance and the split distance --
+found nothing at depths six through eight in 477 seconds. Each bound alone
+says six; jointly the answer is much deeper, and the maximum of two weak
+independent bounds is still weak. The module is kept: it is the version that
+guarantees rather than sifts, and it is what proved the predicate was sound.
+
+## Where the third phase stands
+
+It works, and its cost is set by how tight the bound is. On cubes scrambled a
+known number of third-phase moves, searching to a limit of thirteen:
+
+| Bound | Answer | |
+| --- | --- | --- |
+| 2 | 6 | fast |
+| 7 | 8 | fast |
+| 7 | 9 | fast |
+| 9 | 13 | slow, finishes |
+| 6 | -- | did not finish |
+
+The last row is the whole problem. A loose bound means the search exhausts
+every depth from the bound up to the true answer, and each of those is a full
+tree over twenty moves. This is why the driver scores candidates first and
+spends its budget on the tight ones.
+
+What remains is node throughput. The transition is now twelve lookups and a
+ranking, with no allocation; the reference does the same work in optimised
+Java at a rate this does not approach. Whether that gap closes by a better
+bound or by cheaper nodes is the open question.
 
 ## What is next
 
-1. Enumerate phase-2 solutions rather than walking one, and keep those that
-   separate the wings. The 3x3's `manyExactly` is the shape to copy.
-2. Phase 3's edge tables. Measured, and the cheap routes are closed:
-
-   **Projections do not work.** A move acts on the pairing permutation as
-   `R -> b . R . a'`, where `a` and `b` are its actions on the two wing
-   orbits. That relabels the domain *and* the codomain, so "where do these
-   four places go" is not closed under the moves and cannot be a coordinate.
-   Tracking `L` or `H` alone is closed -- the positions holding a fixed set of
-   pieces transform by `a` -- but neither says anything about `R = H' . L`,
-   which is the only thing the phase is trying to fix.
-
-   **A table-free heuristic is far too weak.** The most a single phase-3 move
-   was seen to improve the pairing, over 1,200 tries on 60 states, is four
-   places. So `ceil(unpaired / 4)` is admissible and gives at most 3 for a
-   fully unpaired cube, against phase-3 solutions of ten to fifteen moves.
-   With twenty moves branching, that prunes nothing.
-
-   **The exact table does not fit.** 12!/2 is 239,500,800 states: 239MB as
-   bytes is affordable, but the two frontier arrays are Int32 and come to
-   1.9GB, and the build is 4.8 billion transitions -- half an hour at the
-   rate measured here.
-
-   So this needs what TPR uses: eight symmetries folding 239.5M to 31M.
-
-   **Built.** `CubeSolvers.Revenge.Edges` carries the state, its twenty
-   moves, the three rotations, the ranking, the symmetry fold and the table.
-   The fold gives 1,538 classes, which is the reference's figure. The table
-   fills all 31,006,080 entries, deepest 13, in **79 seconds** -- against
-   TPR's 6 to 7 in optimised Java, which is a fair ratio for a first pass.
-
-   Two bits an entry, holding the depth modulo three: a neighbour is nearer,
-   level, or further, and only one of those is one less than the present
-   depth, so the true distance is recovered by walking down. Sweeping the
-   whole table per depth rather than keeping a frontier, because a frontier
-   of thirty-one million indices would cost more than the table it fills.
-
-   It is a build step, not a test. The suite checks the first five rings --
-   1,496 entries, under a second -- and the packing.
-3. The search that uses them: the centre table and the edge tables together,
-   as the 3x3 already does with its two.
-4. The driver: phase-1 solutions feed phase 2, phase 2 feeds phase 3, and the
-   result goes to `CubeSolvers.Rubik`. TPR tries 10,000 phase-1 solutions, 500
-   phase-2 attempts and 100 phase-3 attempts to reach 44.39.
+1. Make the third phase finish on real cubes inside a sensible budget. Either
+   a tighter bound or cheaper nodes; the two tables are built and correct.
+2. Tune towards 44.5 moves once it finishes at all: more first-phase answers,
+   more second-phase slack, more third-phase attempts. TPR uses 10,000, 500
+   and 100 to reach 44.39.
+3. 4x4 scrambling, which needs the solver: a random state is scrambled by
+   solving it and reversing.

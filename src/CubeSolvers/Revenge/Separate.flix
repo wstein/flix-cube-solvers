@@ -234,7 +234,27 @@ mod CubeSolvers.Revenge.Separate {
         depth: Int32,
         cap: Int32
     ): List[List[Int32]] =
-        collect(t, dist, at, depth, -1, cap)
+        collect(t, dist, at, depth, -1, cap, 0)
+
+    ///
+    /// The same, starting the move order at `spin`.
+    ///
+    /// Answers come out in the order the moves are tried, so a plain search
+    /// returns a family that shares long prefixes -- and what happens to the
+    /// wings along the way is shared with it. Sifting such a family for a
+    /// property one state in seven hundred has is not the same as sifting
+    /// that many states: six thousand of them yielded none. Turning the move
+    /// order gives a family that starts elsewhere.
+    ///
+    pub def manyExactlyFrom(
+        t: Steps,
+        dist: Vector[Int32],
+        at: Int32,
+        depth: Int32,
+        cap: Int32,
+        spin: Int32
+    ): List[List[Int32]] =
+        collect(t, dist, at, depth, -1, cap, spin)
 
     ///
     /// Every solution of exactly `depth` moves from here, up to `cap`.
@@ -245,10 +265,70 @@ mod CubeSolvers.Revenge.Separate {
         at: Int32,
         depth: Int32,
         last: Int32,
-        cap: Int32
+        cap: Int32,
+        spin: Int32
     ): List[List[Int32]] =
         let lower = Vector.get(at, dist);
+        let width = Vector.length(moves());
         if (lower > depth or cap <= 0 or lower < 0)
+            Nil
+        else if (depth == 0)
+            if (lower == 0) (Nil :: Nil) else Nil
+        else
+            List.range(0, width)
+                |> List.map(i -> (i + spin) `Int32.modulo` width)
+                |> List.filter(m -> allowed(m, last))
+                |> List.foldLeft(acc -> m ->
+                    let room = cap - List.length(acc);
+                    if (room <= 0)
+                        acc
+                    else
+                        let deeper = collect(t, dist, after(t, at, m), depth - 1, m, room, spin + 1);
+                        acc ::: List.map(rest -> m :: rest, deeper),
+                    Nil)
+
+    ///
+    /// Everything the wing split contributes to the search.
+    ///
+    pub type alias Splitting = {
+        orbits = Vector[Int32],
+        binoms = Vector[Vector[Int32]],
+        steps = Vector[Vector[Int32]]
+    }
+
+    ///
+    /// Every answer of exactly `depth` moves that also splits the wings.
+    ///
+    /// The split is a bound here rather than a test afterwards. Enumerating
+    /// answers and keeping the ones that happen to split does not work: the
+    /// property picks twelve slots of twenty-four, so it almost never holds
+    /// by luck, and six thousand answers produced none.
+    ///
+    pub def manySplitting(
+        t: Steps,
+        dist: Vector[Int32],
+        s: Splitting,
+        at: Int32,
+        orbitAt: Int32,
+        depth: Int32,
+        cap: Int32
+    ): List[List[Int32]] =
+        gather(t, dist, s, at, orbitAt, depth, -1, cap)
+
+    def gather(
+        t: Steps,
+        dist: Vector[Int32],
+        s: Splitting,
+        at: Int32,
+        orbitAt: Int32,
+        depth: Int32,
+        last: Int32,
+        cap: Int32
+    ): List[List[Int32]] =
+        let settled = Vector.get(at, dist);
+        let split = Vector.get(orbitAt, s#orbits);
+        let lower = Int32.max(settled, split);
+        if (lower > depth or cap <= 0 or settled < 0 or split < 0)
             Nil
         else if (depth == 0)
             if (lower == 0) (Nil :: Nil) else Nil
@@ -260,7 +340,10 @@ mod CubeSolvers.Revenge.Separate {
                     if (room <= 0)
                         acc
                     else
-                        let deeper = collect(t, dist, after(t, at, m), depth - 1, m, room);
+                        let deeper = gather(t, dist, s,
+                            after(t, at, m),
+                            CubeSolvers.Revenge.Orbits.after(s#binoms, s#steps, orbitAt, m),
+                            depth - 1, m, room);
                         acc ::: List.map(rest -> m :: rest, deeper),
                     Nil)
 

@@ -52,4 +52,48 @@ mod TestRevengeSeparate {
         foreach (g <- Vector.toList(goals()))
             Assert.assertEq(expected = true, g >= 0 and g < count())
 
+    ///
+    /// Turning the move order gives different answers, all of them valid.
+    ///
+    /// This is not cosmetic. Answers read in one fixed order share long
+    /// prefixes, and the next phase sifts them for a property about one in
+    /// five hundred has -- so a correlated family of six thousand can yield
+    /// none where a spread-out family of thirty thousand yields sixty-four.
+    ///
+    @Test
+    def turningTheMoveOrderGivesDifferentAnswers(): Unit \ Assert =
+        let dist = table();
+        let steps = CubeSolvers.Revenge.Separate.steps();
+        let cube = CubeSolvers.parse("Rw2 U Fw2 R2 Uw2 F")
+            |> Result.toOption
+            |> Option.flatMap(ms ->
+                CubeSolvers.Turning.replay(CubeSolvers.Solver.solved(Kind.Cube4x4), ms) |> Result.toOption);
+        match cube {
+            case None => Assert.assertEq(expected = "a cube", "no cube")
+            case Some(c) =>
+                let at = coordinate(c);
+                let depth = Vector.get(at, dist);
+                // two moves deeper, where there are far more answers than the cap
+                let wanted = depth + 2;
+                let plain = CubeSolvers.Revenge.Separate.manyExactlyFrom(steps, dist, at, wanted, 12, 0);
+                let spread = List.range(0, 6)
+                    |> List.flatMap(spin ->
+                        CubeSolvers.Revenge.Separate.manyExactlyFrom(steps, dist, at, wanted, 12, spin))
+                    |> List.distinct;
+                // the cap has to bite, or turning the order proves nothing
+                let available = CubeSolvers.Revenge.Separate.manyExactlyFrom(
+                    steps, dist, at, wanted, 5000, 0);
+                Assert.assertEq(expected = true, List.length(available) > 12);
+                Assert.assertEq(expected = 12, List.length(plain));
+                // turning the order reaches answers one fixed order never returns
+                Assert.assertEq(expected = true, List.length(spread) > List.length(plain));
+                // every answer, however ordered, is exactly that long and lands on the goal
+                foreach (answer <- plain ::: spread) {
+                    Assert.assertEq(expected = wanted, List.length(answer));
+                    let landed = List.foldLeft(x -> m ->
+                        CubeSolvers.Revenge.Separate.after(steps, x, m), at, answer);
+                    Assert.assertEq(expected = 0, Vector.get(landed, dist))
+                }
+        }
+
 }
